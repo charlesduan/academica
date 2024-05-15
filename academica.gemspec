@@ -3,7 +3,7 @@ require 'date'
 
 Gem::Specification.new do |s|
     s.name = 'academica'
-    s.version = '1.0.0'
+    s.version = '1.0.1'
     s.date = Date.today.to_s
     s.summary = 'Tools for academic course management'
     s.description = <<~EOF
@@ -14,6 +14,7 @@ Gem::Specification.new do |s|
     s.email = 'rubygems.org@cduan.com'
     s.executables = [ 'grade.rb' ]
     s.add_runtime_dependency "cli-dispatcher", "~>1.1.0"
+    s.add_runtime_dependency "ruby-statistics", "~>3.0"
     s.files = FileList[
         'lib/**/*.rb',
         # 'test/**/*.rb',
