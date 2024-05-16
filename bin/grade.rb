@@ -118,6 +118,37 @@ class Grade < Dispatcher
     EOF
   end
 
+  def align_yaml(text)
+    res = ""
+    last_indent = nil
+    buffer = []
+    text.split(/\n/).each do |line|
+      unless line =~ /\A(\s+)(\w+):\s+/
+        res << align_yaml_resolve_buffer(last_indent, buffer)
+        res << line << "\n"
+        next
+      end
+      indent, key, value = $1, $2, $'
+      if indent != last_indent
+        res << align_yaml_resolve_buffer(last_indent, buffer)
+      end
+      last_indent = indent
+      buffer << [ key, value ]
+    end
+    res << align_yaml_resolve_buffer(last_indent, buffer)
+    return res
+  end
+
+  def align_yaml_resolve_buffer(indent, buffer)
+    return '' if buffer.empty?
+    max_len = buffer.map { |k, v| k.length }.max
+    res = buffer.map { |k, v|
+      "#{indent}#{k}: #{' ' * (max_len - k.length)}#{v}\n"
+    }.join
+    buffer.clear
+    return res
+  end
+
   def cmd_exam(exam_id)
     f = filename(exam_id)
     if File.exist?(f)
@@ -127,7 +158,7 @@ class Grade < Dispatcher
     exam = Examination.new({ exam_id: exam_id, answers: {} })
     exam.incorporate(rubric)
     open(f, 'w') do |io|
-      YAML.dump(exam.to_h, io)
+      io.write(align_yaml(YAML.dump(exam.to_h)))
     end
     exec('vim', filename(exam_id))
   end
