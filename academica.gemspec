@@ -3,7 +3,7 @@ require 'date'
 
 Gem::Specification.new do |s|
     s.name = 'academica'
-    s.version = '1.0.1'
+    s.version = '1.0.2'
     s.date = Date.today.to_s
     s.summary = 'Tools for academic course management'
     s.description = <<~EOF

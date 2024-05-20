@@ -1,6 +1,7 @@
 require 'structured'
 require_relative 'examination/issue_score'
 require_relative 'examination/answer'
+require_relative 'examination/mc-answer'
 
 class Examination
   include Structured
@@ -23,6 +24,14 @@ class Examination
     return @exam_id
   end
 
+  def flag(problem)
+    warn(problem)
+    @flagged = true
+  end
+  def flagged
+    return @flagged || @answers.values.any? { |a| a.flagged }
+  end
+
   def incorporate(rubric)
 
     # Fill out each answer with question data
@@ -38,9 +47,20 @@ class Examination
     # Check for extraneous answers
     @answers.each do |name, answer|
       unless rubric.question(name)
-        raise "#{text_id}: extraneous answer #{answer}"
+        flag("#{text_id}: extraneous answer #{answer}")
       end
     end
+
+    # Add the multiple choice component. It is done here so it is not tested as
+    # an extraneous answer.
+    if rubric.multiple_choice
+      a = MultipleChoiceAnswer.new({
+        multiple_choice: rubric.multiple_choice
+      }, self)
+      a.receive_key(:mc)
+      @answers[:mc] = a
+    end
+
   end
 
   def each

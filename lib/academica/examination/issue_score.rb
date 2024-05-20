@@ -2,20 +2,29 @@ require 'structured'
 
 class Examination
   class IssueScore
+
+    def flag(problem)
+      warn(problem)
+      @flagged = true
+    end
+    attr_reader :flagged
+
     include Structured
 
     element(:points, { String => String })
     def receive_points(elements)
       @elements = elements.transform_values { |v|
         num, denom = v.split('/')
-        raise "Invalid denominator in #{v}" if denom.to_i == 0
+        flag("Invalid denominator in #{v}") if denom.to_i == 0
         denom = denom.to_i
         num = case num
               when '-' then nil
               when /\A\d+\z/
-                raise "Numerator too large in #{v}" if num.to_i > denom
-                num.to_i
-              else raise "Invalid numerator in #{v}"
+                flag("Numerator too large in #{v}") if num.to_i > denom
+                [ denom, num.to_i ].min
+              else
+                flag("Invalid numerator in #{v}; assuming zero")
+                0
               end
         [ num, denom ]
       }
@@ -52,7 +61,7 @@ class Examination
       issue.each do |elt, points|
         if @elements.include?(elt)
           num, denom = @elements[elt]
-          raise "#{text_id}: issue points mismatch" unless points == denom
+          flag("#{text_id}: issue points mismatch") unless points == denom
         else
           @elements[elt] = [ nil, points ]
         end
@@ -86,7 +95,7 @@ class Examination
       @elements.each do |elt, pt_array|
         next if elt_re && elt !~ elt_re
         if pt_array.first.nil?
-          warn("In #{text_id}, no score specified") unless @extra
+          flag("In #{text_id}, no score specified") unless @extra
         else
           award += pt_array.first
         end

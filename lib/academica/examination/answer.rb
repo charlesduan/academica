@@ -9,6 +9,8 @@ class Examination
       scores for each Issue corresponding to the Question.
     EOF
 
+    element(:note, String, optional: true,
+            description: "Note about this answer")
     default_element(
       IssueScore,
       description: "Maps issue names to scoring data"
@@ -28,6 +30,17 @@ class Examination
     end
     attr_reader :name
 
+
+    def flag(problem)
+      warn(problem)
+      @flagged = true
+    end
+
+    def flagged
+      return true if @flagged or @issues.values.any? { |is| is.flagged }
+      return false
+    end
+
     #
     # Fills in this Answer based on a Question rubric.
     #
@@ -35,7 +48,7 @@ class Examination
       @issues ||= {}
       @question = question
       unless question.name == @name
-        raise "In #{text_id}, name is #@name, should be #{question.name}"
+        flag("In #{text_id}, name is #@name, should be #{question.name}")
       end
 
       # Iterate through the issues in the question
@@ -53,7 +66,7 @@ class Examination
       # Look for extraneous issues in this Answer
       @issues.each do |name, issue|
         unless question.include?(name)
-          raise "In #{text_id}, extraneous issue #{name}"
+          flag("In #{text_id}, extraneous issue #{name}")
         end
       end
     end

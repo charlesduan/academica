@@ -5,6 +5,7 @@ require_relative 'rubric/issue_template'
 require_relative 'rubric/question_type'
 require_relative 'rubric/issue'
 require_relative 'rubric/question'
+require_relative 'rubric/multiple_choice'
 
 class Rubric
 
@@ -33,6 +34,10 @@ class Rubric
   element(:questions, { String => Question }, description: <<~EOF)
     The list of gradable questions. The String is a name for each Question, and
     each Question specifies one or more Issues (see documentation for Question).
+  EOF
+  element(:multiple_choice, MultipleChoice, optional: true,
+          description: <<~EOF)
+    Information about the multiple choice component for grading.
   EOF
   element(:curve, CurveCalculator, description: <<~EOF)
     Information for computing a class curve over a set of examinations.

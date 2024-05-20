@@ -62,9 +62,14 @@ class Grade < Dispatcher
   #
   def all_examinations
     return all_exam_ids.map { |exam_id|
-      e = Examination.new(YAML.load_file(filename(exam_id)))
-      e.incorporate(rubric)
-      e
+      begin
+        e = Examination.new(YAML.load_file(filename(exam_id)))
+        e.incorporate(rubric)
+        e
+      rescue Exception => e
+        warn("#{filename(exam_id)}: #{e.to_s}")
+        raise
+      end
     }.sort_by { |exam|
       @sort_by_grade ? -exam.score_report(false) : exam.exam_id
     }
@@ -160,7 +165,38 @@ class Grade < Dispatcher
     open(f, 'w') do |io|
       io.write(align_yaml(YAML.dump(exam.to_h)))
     end
-    exec('vim', filename(exam_id))
+    system('vim', filename(exam_id))
+    cmd_validate(exam_id)
+  end
+
+
+  def help_validate
+    return <<~EOF
+      Validates the YAML file for a given exam ID. With no exam ID given,
+      validates all exam IDs.
+    EOF
+  end
+  def cmd_validate(exam_id = nil)
+    if exam_id.nil?
+      all_exam_ids.each do |exam_id|
+        cmd_validate(exam_id)
+      end
+      return
+    end
+
+    file = filename(exam_id)
+    raise("File #{file} does not exist") unless File.exist?(file)
+    begin
+      e = Examination.new(YAML.load_file(file))
+      e.incorporate(rubric)
+      e.score_report(false)
+      raise "Problem flagged" if e.flagged
+    rescue
+      warn("One or more problems were identified. Edit the file?")
+      if STDIN.gets =~ /^y/i
+        system('vim', filename(exam_id))
+      end
+    end
   end
 
 
@@ -197,6 +233,16 @@ class Grade < Dispatcher
     end
   end
 
+  #
+  # Interprets a pattern in the form of question/issue/element.
+  #
+  def interpret_pattern(text)
+    res = text.split('/', 3).map { |s| Regexp.new(s) }
+    while (res.count < 2)
+      res << Regexp.new('')
+    end
+    return res
+  end
 
   def help_analyze
     return <<~EOF
@@ -213,9 +259,7 @@ class Grade < Dispatcher
   end
 
   def cmd_analyze(*patterns)
-    regexps = patterns.map { |a|
-      a.split('/', 3).map { |s| Regexp.new(s) }
-    }
+    regexps = patterns.map { |a| interpret_pattern(a) }
     all_examinations.each do |exam|
       v = regexps.map { |args|
         "%d/%d+%d" % exam.match(*args)
@@ -235,26 +279,37 @@ class Grade < Dispatcher
       second (indicating the total score).
     EOF
   end
+
+  #
+  # Given a pattern and a number of buckets or bucket size, yield once for each
+  # bucket of exam IDs within the bucket.
+  #
+  def scores_for_pattern(pattern)
+    pattern = interpret_pattern(pattern) if pattern
+    return all_examinations.map { |e|
+      if pattern
+        base, tot, extra = e.match(*pattern)
+        [ e.exam_id, [ tot, base + extra ].min ]
+      else
+        [ e.exam_id, e.score_report(false) ]
+      end
+    }.to_h
+  end
+
   def cmd_graph(pattern1, pattern2 = nil)
     if pattern2.nil?
       pattern2 = pattern1
-      pattern1 = '.*/.*'
+      pattern1 = nil
     end
-    re1s = pattern1.split('/', 3).map { |s| Regexp.new(s) }
-    re2s = pattern2.split('/', 3).map { |s| Regexp.new(s) }
 
-    data = all_examinations.map { |exam|
-      base, tot, extra = exam.match(*re1s)
-      score1 = [ tot, base + extra ].min
-      base, tot, extra = exam.match(*re2s)
-      score2 = [ tot, base + extra ].min
-      [ score1, score2 ]
-    }
+    data1 = scores_for_pattern(pattern1)
+    data2 = scores_for_pattern(pattern2)
+    data = data1.keys.map { |exam_id| [ data1[exam_id], data2[exam_id] ] }
 
     x_range = data.map(&:first).minmax
     y_range = data.map(&:last).minmax
 
-    plot_dim = [ 40, 15 ]
+    plot_dim = [ 60, 18 ]
     plot_array = (0 ... plot_dim.last).map { |i| [ 0 ] * plot_dim.first }
 
     data.each do |x_val, y_val|
@@ -272,7 +327,7 @@ class Grade < Dispatcher
       "      +-" + ("-" * plot_dim.first),
       "        " + \
       ("%-5d" % x_range.first) + \
-      pattern1.center(plot_dim.first - 10) + \
+      (pattern1 || '.*').center(plot_dim.first - 10) + \
       ("%5d" % x_range.last)
     )
     puts graph.join("\n")
@@ -300,16 +355,57 @@ class Grade < Dispatcher
     buckets will be constructed.
     EOF
   end
-  def cmd_hist(interval = nil)
-    scores = all_examinations.map { |e| e.score_report(false) }
-    min, max = scores.minmax
-    interval ||= ((max - min) / 10).round
+  def cmd_hist(pattern = nil, interval = nil)
+    buckets = 10
+    scores = scores_for_pattern(pattern)
+
+    min, max = scores.values.minmax
+    interval ||= ((max - min) / buckets).round
     interval = [ interval.to_i, 1 ].max
 
     min.step(by: interval, to: max + 1) do |i|
       r = (i ... (i + interval))
-      c = scores.count { |s| r.include?(s) }
+      c = scores.count { |exam_id, score| r.include?(score) }
       puts("%-9s  %s" % [ r.to_s, "*" * c ])
+    end
+  end
+
+
+  def help_mc
+    return <<~EOF
+      Analyze performance on the multiple choice. Exams are divided into the
+      given number of buckets (default 10). For each multiple choice question,
+      the number of students answering that question correctly per bucket is
+      displayed.
+    EOF
+  end
+  def cmd_mc(pattern = nil, buckets = 10)
+    mc = rubric.multiple_choice
+    unless mc
+      warn("No multiple choice specification in rubric")
+      exit 1
+    end
+
+    scores = scores_for_pattern(pattern).sort_by { |i, score| score }
+    bucket_size = (scores.count * 1.0 / buckets).ceil
+
+    header = "Question"
+    scores.each_slice(bucket_size) do |slice_scores|
+      max_score = slice_scores.map(&:last).max
+      header << (" %4d" % max_score)
+    end
+    puts header
+
+    syms = %w(. .. ... .... ...* ..** .*** ****)
+    mc.each_question do |qnum|
+      line = "%8s" % qnum
+      scores.each_slice(bucket_size) do |slice|
+        pct = mc.num_correct(qnum, slice.map(&:first)).to_f / slice.count
+        line << (" %4s" % syms[
+          [ syms.count - 1, (pct * syms.count).floor ].min
+        ])
+      end
+      puts line
     end
   end
 
