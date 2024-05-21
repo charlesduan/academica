@@ -397,6 +397,28 @@ class Grade < Dispatcher
   # :section: Commands for setting the curve.
   #
 
+  #
+  # Sets up and returns the curve.
+  #
+  def setup_cc
+    cc = rubric.curve_calculator
+    cc.scores = all_examinations.map { |e|
+      [ e.exam_id, e.score_report(false) ]
+    }.to_h
+    return cc
+  end
+
+  #
+  # Returns the actual curve, after setting it up.
+  #
+  def setup_curve(cc = nil)
+    cc ||= setup_cc
+    unless cc.actual
+      raise "No actual curve given; run auto_curve"
+    end
+    return cc.actual_curve
+  end
+
   def help_auto_curve
     return <<~EOF
       Generates proposed grade curve cutoffs based on target statistics.
@@ -407,13 +429,7 @@ class Grade < Dispatcher
 
   def cmd_auto_curve(n = 7)
 
-    @sort_by_grade = true
-    scores = all_examinations.map { |e|
-      [ e.exam_id, e.score_report(false) ]
-    }.to_h
-
-    cc = rubric.curve_calculator
-    cc.scores = scores
+    cc = setup_cc
     curves = cc.to_a.sort_by { |c| c.metric }
 
     puts "Overall metric distributions:"
@@ -439,6 +455,24 @@ class Grade < Dispatcher
     puts("Paste the desired curve specification under an 'actual' parameter")
     puts("in the 'curve' section of the rubric file. Then run the 'curve'")
     puts("command.")
+  end
+
+  def help_normal_curve
+    return <<~EOF
+      Computes a grading curve based on a normal distribution as specified in
+      the rubric.
+    EOF
+  end
+
+  def cmd_normal_curve
+    cc = setup_cc
+    curve = cc.normal_curve
+    show_curve_info("Normal curve", curve)
+
+    puts "Ideal grade distribution:"
+    cc.ideal_distribution.each do |grade, count|
+      puts("  %-2s: %5.2f" % [ grade, count ])
+    end
   end
 
   def show_curve_info(name, curve)
@@ -472,17 +506,8 @@ class Grade < Dispatcher
   end
 
   def cmd_curve(file = nil)
-    cc = rubric.curve_calculator
-    unless cc.actual
-      raise "No actual curve given; run auto_curve"
-    end
-
-    cc.scores = all_examinations.map { |e|
-      [ e.exam_id, e.score_report(false) ]
-    }.to_h
-
-    curve = cc.actual_curve
-
+    cc = setup_cc
+    curve = setup_curve(cc)
     show_curve_info('Curve', curve)
 
     puts
@@ -519,21 +544,41 @@ class Grade < Dispatcher
   end
 
   def cmd_weights
+    exams = all_examinations
     question_data = rubric.questions.map { |name, question|
-      [
-        name,
-        question.total_points,
-        question.weight,
-        question.total_points * question.weight
-      ]
+      {
+        name:   name,
+        points: question.total_points,
+        weight: question.weight,
+        mean:   exams.map { |e| e.answers[name].final_score }.mean,
+      }
     }
-    total_points = question_data.sum(&:last)
-    question_data.each do |data|
-      data.push(data.last * 100.0 / total_points)
+    if (mc = rubric.multiple_choice)
+      question_data.push({
+        name:   'mc',
+        points: mc.max_score,
+        weight: 1,
+        mean:   exams.map { |e| e.answers[:mc].final_score }.mean
+      })
     end
+    total_points = question_data.sum { |data| data[:points] }
+    total_mean = question_data.sum { |data| data[:mean] }
 
+    puts("By points:")
     question_data.each do |data|
-      puts("%8s   %3d * %4.2f = %6.2f (%5.2f%%)" % data)
+      puts("%12s   %5d * %4.2f = %6.2f (%5.2f%%)" % [
+        data[:name], data[:points], data[:weight],
+        data[:points] * data[:weight],
+        100 * data[:points] * data[:weight] / total_points,
+      ])
+    end
+    puts("\nBy means:")
+    question_data.each do |data|
+      puts("%12s   %5.2f * %4.2f = %6.2f (%5.2f%%)" % [
+        data[:name], data[:mean], data[:weight],
+        data[:mean] * data[:weight],
+        100 * data[:mean] * data[:weight] / total_mean,
+      ])
     end
   end
 
@@ -575,6 +620,37 @@ class Grade < Dispatcher
       ])
     end
 
+  end
+
+  def help_outliers
+    return <<~EOF
+      Identifies outlier exams for further investigation.
+
+      Two types of outliers are returned. First, those for which the performance
+      on one question was substantially unexpected compared to their overall
+      performance. Second, those that are close to the boundaries of the curve.
+    EOF
+  end
+  def cmd_outliers(point_range = 3)
+    cc = setup_cc
+    curve = setup_curve(cc)
+    borderline_exams = []
+    cc.scores.each do |exam_id, score|
+      hi, lo = score + point_range, score - point_range
+      if curve.grade_for(hi) != curve.grade_for(lo)
+        borderline_exams.push([ score, exam_id ])
+      end
+    end
+
+    borderline_exams.group_by { |score, exam_id|
+      curve.grade_for(score)
+    }.sort.each do |grade, data|
+      puts "Borderline #{grade}:"
+      data.sort.each do |score, exam_id|
+        puts "  #{exam_id}: #{score}"
+      end
+      puts
+    end
   end
 
 end

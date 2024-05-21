@@ -109,6 +109,14 @@ class Examination
       return [ base, total, extra ].map { |x| x * @question.weight }
     end
 
+    #
+    # Returns the final score, which is base + extra but limited to total.
+    #
+    def final_score
+      base, total, extra = score()
+      return [ total, base + extra ].min
+    end
+
   end
 
 end

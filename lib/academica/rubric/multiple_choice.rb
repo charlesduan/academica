@@ -186,7 +186,7 @@ class Rubric
           ).round(3),
           answer_count: scores.map { |exam_id, score|
             @responses[exam_id][qnum]
-          }.tally.sort.to_h,
+          }.group_by { |x| x }.transform_values(&:count).sort.to_h,
           correct: correct,
         } ]
 

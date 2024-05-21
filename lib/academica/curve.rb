@@ -93,6 +93,26 @@ class CurveCalculator
   end
 
   #
+  # Computes a theoretical normal distribution over the scores.
+  #
+  def normal_curve
+    raise "Cannot compute distribution without score data" unless @scores
+    z = Statistics::Distribution::Normal.new(@target_mean, @target_sd)
+    svals = @scores.values.sort
+    cutoffs = gpa_cutoffs.transform_values { |hi, lo|
+      next 0 unless lo
+      # The CDF value of GPA low range position indicates the fraction of scores
+      # that should be below the grade. Multiplied by n, that's how many grades
+      # the cutoff should be at.
+      cutoff_pos = (z.cumulative_function(lo) * n).round
+      cutoff_pos < n ? svals[cutoff_pos] : svals.last + 1
+    }
+    c = Curve.new(@scores, cutoffs)
+    measure_curve(c)
+    return c
+  end
+
+  #
   # Determines GPA cutoff ranges for letter grades. The upper cutoff for a grade
   # is defined as halfway between the GPA for the grade and the GPA for the
   # above grade; the lower cutoff is similarly defined. This produces a hash
