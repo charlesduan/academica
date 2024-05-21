@@ -154,5 +154,45 @@ class Rubric
       return exam_ids.count { |exam_id| answers_for(exam_id)[qnum] == correct }
     end
 
+    #
+    # Given a table of exam IDs mapped to scores, computes statistics for each
+    # question. If no scores are given, then the multiple choice scores alone
+    # are used.
+    #
+    def statistics(scores = nil)
+      scores ||= @responses.keys.map { |exam_id|
+        [ exam_id, score_for(exam_id) ]
+      }.to_h
+
+      return @key.map { |qnum, correct|
+        data = scores.map { |exam_id, score|
+          [ score, (@responses[exam_id][qnum] == correct) ? 1 : 0 ]
+        }.sort_by { |score, resp| score }
+        grouped_scores = data.group_by { |score, resp|
+          resp
+        }.transform_values { |lists| lists.map(&:first) }
+        count_27pct = (data.count * 0.27).round
+
+        [ qnum, {
+          frac_correct: data.map(&:last).mean.round(3),
+          point_biserial: ((
+            grouped_scores[1].mean - grouped_scores[0].mean
+          ) / scores.values.standard_deviation * Math.sqrt(
+            grouped_scores[1].count * grouped_scores[0].count
+          ) / scores.count).round(3),
+          discrimination_index: (
+            data.last(count_27pct).map(&:last).mean -
+            data.first(count_27pct).map(&:last).mean
+          ).round(3),
+          answer_count: scores.map { |exam_id, score|
+            @responses[exam_id][qnum]
+          }.tally.sort.to_h,
+          correct: correct,
+        } ]
+
+      }.to_h
+
+    end
+
   end
 end

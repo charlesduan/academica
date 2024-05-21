@@ -373,40 +373,18 @@ class Grade < Dispatcher
 
   def help_mc
     return <<~EOF
-      Analyze performance on the multiple choice. Exams are divided into the
-      given number of buckets (default 10). For each multiple choice question,
-      the number of students answering that question correctly per bucket is
-      displayed.
+      Analyze performance on the multiple choice.
     EOF
   end
-  def cmd_mc(pattern = nil, buckets = 10)
+  def cmd_mc(pattern = nil)
     mc = rubric.multiple_choice
     unless mc
       warn("No multiple choice specification in rubric")
       exit 1
     end
 
-    scores = scores_for_pattern(pattern).sort_by { |i, score| score }
-    bucket_size = (scores.count * 1.0 / buckets).ceil
-
-    header = "Question"
-    scores.each_slice(bucket_size) do |slice_scores|
-      max_score = slice_scores.map(&:last).max
-      header << (" %4d" % max_score)
-    end
-    puts header
-
-    syms = %w(. .. ... .... ...* ..** .*** ****)
-    mc.each_question do |qnum|
-      line = "%8s" % qnum
-      scores.each_slice(bucket_size) do |slice|
-        pct = mc.num_correct(qnum, slice.map(&:first)).to_f / slice.count
-        line << (" %4s" % syms[
-          [ syms.count - 1, (pct * syms.count).floor ].min
-        ])
-      end
-      puts line
-    end
+    scores = scores_for_pattern(pattern)
+    puts mc.statistics(scores).to_yaml
   end
 
 
