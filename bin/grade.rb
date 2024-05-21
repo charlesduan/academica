@@ -309,6 +309,10 @@ class Grade < Dispatcher
     x_range = data.map(&:first).minmax
     y_range = data.map(&:last).minmax
 
+    xmean, ymean = data.transpose.map(&:mean)
+    covar = data.sum { |x, y| (x - xmean) * (y - ymean) } / data.count
+    r = covar / data.transpose.map(&:standard_deviation).inject(:*)
+
     plot_dim = [ 60, 18 ]
     plot_array = (0 ... plot_dim.last).map { |i| [ 0 ] * plot_dim.first }
 
@@ -322,7 +326,7 @@ class Grade < Dispatcher
     }
     graph.first[0, 5] = "%5d" % y_range.last
     graph.last[0, 5] = "%5d" % y_range.first
-    graph.unshift(pattern2.center(14))
+    graph.unshift(pattern2.center(14) + "   r = #{r.round(4)}")
     graph.push(
       "      +-" + ("-" * plot_dim.first),
       "        " + \
