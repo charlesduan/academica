@@ -476,6 +476,26 @@ class Grade < Dispatcher
     puts mc.statistics(scores).to_yaml
   end
 
+  def help_student_mc
+    return <<~EOF
+      Analyze one student's performance on the multiple choice.
+    EOF
+  end
+  def cmd_student_mc(exam_id)
+    exam = all_examinations.find { |e| exam_id == exam_id }
+    unless exam.is_a?(Examination)
+      warn("No such exam ID #{exam_id}")
+      return
+    end
+    mc = rubric.multiple_choice
+    mc_ans = mc.answers_for(exam_id)
+    puts "Exam ID #{exam_id}:"
+
+    mc_ans.each do |qnum, ans|
+      next if ans == mc.key[qnum]
+      puts "Question #{qnum}: #{mc.key[qnum]} correct, #{ans} student"
+    end
+  end
 
 
   #
