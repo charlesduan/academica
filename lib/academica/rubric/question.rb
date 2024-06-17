@@ -83,7 +83,7 @@ class Rubric
     end
 
     def total_points
-      @issues.values.sum(&:total_points)
+      @issues.values.select { |i| !i.extra }.sum(&:total_points)
     end
   end
 

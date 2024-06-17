@@ -61,7 +61,8 @@ class Grade < Dispatcher
   # and returns a map of exam IDs to Examination objects.
   #
   def all_examinations
-    return all_exam_ids.map { |exam_id|
+    return @all_examinations if @all_examinations
+    @all_examinations = all_exam_ids.map { |exam_id|
       begin
         e = Examination.new(YAML.load_file(filename(exam_id)))
         e.incorporate(rubric)
@@ -73,6 +74,7 @@ class Grade < Dispatcher
     }.sort_by { |exam|
       @sort_by_grade ? -exam.score_report(false) : exam.exam_id
     }
+    return @all_examinations
   end
 
   #
@@ -204,6 +206,89 @@ class Grade < Dispatcher
   #
   # :section: Score analysis commands
   #
+
+  def question_stats
+    exams = all_examinations
+    question_data = rubric.questions.map { |name, question|
+      scores = exams.map { |e| e.answers[name].final_score }
+      [ name, {
+        points: question.total_points,
+        weight: question.weight,
+        mean:   scores.mean,
+        sd:     scores.standard_deviation,
+      } ]
+    }.to_h
+    if (mc = rubric.multiple_choice)
+      scores = exams.map { |e| e.answers[:mc].final_score }
+      question_data[:mc] = {
+        points: mc.max_score,
+        weight: 1,
+        mean:   scores.mean,
+        sd:     scores.standard_deviation,
+      }
+    end
+    return question_data
+  end
+
+  #
+  # Returns statistics for a single examination.
+  def exam_stats(stats, exam, print: false)
+    res = stats.map { |name, stat|
+      answer = exam.answers[name]
+      [ name, {
+        points: answer.final_score,
+        diff: (answer.final_score - stat[:mean]) / stat[:sd]
+      } ]
+    }.to_h
+    if print
+      res.each do |name, astat|
+        printf("%12s: %5.1f (%+5.2f SD)\n", name, astat[:points], astat[:diff])
+      end
+    end
+    return res
+  end
+
+  def help_stats
+    return <<~EOF
+      Produces summary statistics.
+
+      With one or more arguments, produces summary statistics generally and for
+      specific examinations.
+    EOF
+  end
+  def cmd_stats(*exam_ids)
+    stats = question_stats
+    stats.each do |name, stat|
+      puts "#{name}:"
+      puts "  Total:  #{stat[:points]}"
+      puts "  Weight: #{stat[:weight]}"
+      puts "  Mean:   #{stat[:mean].round(2)}"
+      puts "  SD:     #{stat[:sd].round(2)}"
+    end
+    exam_ids.each do |exam_id|
+      exam = all_examinations.find { |e| e.exam_id == exam_id }
+      unless exam.is_a?(Examination)
+        warn("No such exam ID #{exam_id}")
+        next
+      end
+
+      puts
+      puts "Exam ID #{exam_id}:"
+      exam_stats(stats, exam, print: true)
+      score = exam.score_report(false)
+      printf("%12s: %5.1f\n", 'TOTAL', score)
+
+      cc = setup_cc
+      next unless cc.actual
+      curve = setup_curve(cc)
+      printf("%12s: %s\n", 'Grade', curve.grade_for(score))
+      printf(
+        "%12s: %d points\n",
+        'To next',
+        curve.stats[curve.grade_for(score)][:max] - score
+      )
+    end
+  end
 
   def help_score
     return <<~EOF
@@ -544,38 +629,22 @@ class Grade < Dispatcher
   end
 
   def cmd_weights
-    exams = all_examinations
-    question_data = rubric.questions.map { |name, question|
-      {
-        name:   name,
-        points: question.total_points,
-        weight: question.weight,
-        mean:   exams.map { |e| e.answers[name].final_score }.mean,
-      }
-    }
-    if (mc = rubric.multiple_choice)
-      question_data.push({
-        name:   'mc',
-        points: mc.max_score,
-        weight: 1,
-        mean:   exams.map { |e| e.answers[:mc].final_score }.mean
-      })
-    end
-    total_points = question_data.sum { |data| data[:points] }
-    total_mean = question_data.sum { |data| data[:mean] }
+    question_data = question_stats
+    total_points = question_data.values.sum { |data| data[:points] }
+    total_mean = question_data.values.sum { |data| data[:mean] }
 
     puts("By points:")
-    question_data.each do |data|
+    question_data.each do |name, data|
       puts("%12s   %5d * %4.2f = %6.2f (%5.2f%%)" % [
-        data[:name], data[:points], data[:weight],
+        name, data[:points], data[:weight],
         data[:points] * data[:weight],
         100 * data[:points] * data[:weight] / total_points,
       ])
     end
     puts("\nBy means:")
-    question_data.each do |data|
+    question_data.each do |name, data|
       puts("%12s   %5.2f * %4.2f = %6.2f (%5.2f%%)" % [
-        data[:name], data[:mean], data[:weight],
+        name, data[:mean], data[:weight],
         data[:mean] * data[:weight],
         100 * data[:mean] * data[:weight] / total_mean,
       ])
@@ -650,6 +719,18 @@ class Grade < Dispatcher
         puts "  #{exam_id}: #{score}"
       end
       puts
+    end
+
+    stats = question_stats
+    all_examinations.each do |exam|
+      estats = exam_stats(stats, exam)
+      esmin, esmax = estats.minmax { |estat1, estat2|
+        estat1.last[:diff] <=> estat2.last[:diff]
+      }
+      next if esmax.last[:diff] - esmin.last[:diff] <= 2
+      puts
+      puts "Exam ID #{exam.exam_id}:"
+      exam_stats(stats, exam, print: true)
     end
   end
 
