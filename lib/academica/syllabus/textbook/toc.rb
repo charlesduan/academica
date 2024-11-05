@@ -1,0 +1,323 @@
+class Textbook
+
+  #
+  # A data structure for a hierarchical table of contents. The table is an
+  # ordered list of Entries.
+  #
+  class TableOfContents
+
+    def inspect
+      "#<#{self.class.name}>"
+    end
+
+    def initialize(book, hash)
+      @book = book
+
+      #
+      # As the table of contents is built up, a stack of the current hierarchy
+      # is maintained. The stack is a reversed list of the ancestry of the
+      # current entry being built.
+      #
+      @stack = []
+      @entries = []
+
+      return if hash.empty?
+
+      # The range of pages where the TOC is found
+      raise "No TOC page range given" unless hash['range'].is_a?(Array)
+      @range = Range.new(hash['range'].first, hash['range'].last)
+
+      # A regular expression for finding the page number of an entry
+      @page_re = Regexp.new(hash['page_re'])
+
+      # A list of the hierarchical numbers of sections
+      @hierarchy = hash['hierarchy'].map { |level| Regexp.new(level) }
+
+      @ignore = (hash['ignore_re'] || []).map { |re| Regexp.compile(re) }
+
+      # The separator for levels.
+      @level_sep = hash['level_sep'] || '.'
+
+    end
+
+    attr_reader :range, :level_sep, :book
+
+    #
+    # Iterates over each entry in the table of contents.
+    #
+    def each(start: nil, stop: nil)
+      @entries.each do |entry|
+        next if start && (entry.range_start <=> start) == -1
+        next if stop && (entry.range_end <=> stop) == 1
+        yield(entry)
+      end
+    end
+
+    #
+    # Finds the first TOC entry with the given name. To search for an entry
+    # under another entry, use a greater-than symbol:
+    #
+    #   Top > Inner
+    #
+    # searches for an entry containing "Inner" within an entry containing "Top".
+    #
+    def entry_named(text)
+      texts = text.split(/\s*>\s*/)
+      level = -1
+
+      #
+      # The texts array is a list of texts to look for. Iterating through the
+      # entries, we see if the entry text matches the first text in the list,
+      # continuing if it does not. Upon a match, see if there are any texts
+      # remaining to match; if not then return the entry. Otherwise, move on to
+      # the next text to match, and require that any subsequent matching entries
+      # be on a level higher than the found entry.
+      #
+      @entries.each do |entry|
+        return nil if entry.level <= level
+        next unless entry.text.include?(texts.first)
+        texts.shift
+        return entry if texts.empty?
+        level = entry.level
+      end
+      return nil
+    end
+
+    #
+    # Returns an index mapping page numbers to arrays of TOC entries.
+    #
+    def entry_index
+      return @entry_index if @entry_index
+      @entry_index = {}
+      each do |entry|
+        (@entry_index[entry.page] ||= []).push(entry)
+      end
+      return @entry_index
+    end
+
+    #
+    # Returns all entries corresponding to a given page number. If there are
+    # multiple entries on the same page, then the last one is returned, unless
+    # prefer_first is true AND the given page number equals the entry's page
+    # number.
+    #
+    # Returns nil if the requested page is before any TOC entries.
+    #
+    def entry_for_page(page, prefer_first: false)
+
+      # Find the largest page number of a TOC entry that is less than or equal
+      # to the page number given
+      entry_page = entry_index.keys.select { |p| p <= page }.max
+      return nil if entry_page.nil?
+
+      return prefer_first ?
+        entry_index[entry_page].first :
+        entry_index[entry_page.last]
+    end
+
+    #
+    # Returns all TOC entries on a given page.
+    #
+    def entries_on(page)
+      return entry_index[page] || []
+    end
+
+    #
+    # Reads a line from the table of contents and updates the table.
+    #
+    def parse_line(line)
+
+      # Ignore lines as specified
+      return if @ignore.any? { |re| line =~ re }
+
+      # If the previous entry is still in need of a page number, then this line
+      # must be part of the last entry. Otherwise, determine if this is the
+      # start of a new entry. If so, create the new entry.
+      unless @entries.last && @entries.last.page.nil?
+        @hierarchy.each_with_index do |re, level|
+          if line =~ re
+            line = $'
+            add_entry($1, level)
+            break
+          end
+        end
+      end
+
+      # If there are no entries or the last entry is complete, then there ought
+      # to be no text here and anything left over is cruft, possibly suggesting
+      # a regular expression error.
+      if (@entries.empty? || @entries.last.page)
+        warn("Unexpected text in TOC: `#{line.strip}'") if line && line =~ /\S/
+        return
+      end
+
+      # If there is a page number, then pull it off and update the entry.
+      # Otherwise, the entire text is for the entry.
+      if line =~ @page_re
+        @entries.last.add_text($`)
+        @entries.last.page = $1
+      else
+        @entries.last.add_text(line)
+      end
+    end
+
+    #
+    # Creates a new entry in the table of contents, revising the stack
+    # accordingly.
+    #
+    def add_entry(number, level)
+      @stack = @stack.last(level)
+      if @stack.count < level
+        @stack = [ nil ] * (level - @stack.count) + @stack
+      end
+      raise "Invalid stack length" unless @stack.count == level
+      parent = @stack.find { |x| x }
+      entry = Entry.new(self, number, level, parent)
+      @entries.last.next_entry = entry unless @entries.empty?
+      @entries.push(entry)
+      @stack.unshift(entry)
+    end
+
+    def print
+      @entries.each do |entry| entry.print end
+    end
+
+
+
+
+    ########################################################################
+    #
+    # An entry in a table of contents. The entry contains the following data:
+    #
+    # - A heading number
+    # - A level number
+    # - A parent entry
+    # - The text of the entry
+    # - A page number
+    # - The next entry
+    #
+    # Upon creation, the entry only has the first three items. The text, page
+    # number, and next entry are subsequently added.
+    #
+    class Entry
+
+      def inspect
+        "#<#{self.class.name}: #@number>"
+      end
+      def initialize(toc, number, level, parent)
+        @toc = toc
+        @number = number == '' ? nil : number
+        @level = level
+        @parent = parent
+        @text = nil
+        @page = nil
+      end
+
+      attr_reader :number, :parent, :text, :level
+      attr_accessor :page, :next_entry
+
+      def page=(page)
+        @page = page.to_i
+      end
+
+      def add_text(text)
+        return if @page
+        if @text
+          text = text.strip
+          @text += " " + text.strip unless text == ''
+        else
+          @text = text.strip
+        end
+      end
+
+      #
+      # Computes the position of the header on the relevant page. The text of
+      # the header is first located, and the heading number is also searched
+      # for. Returns a number indicating the index of the page text's string
+      # where the heading is found.
+      #
+      def pos
+        return @pos if @pos
+        return @pos = -1 if @page.nil?
+        page_text = @toc.book.page(@page)
+        re = Regexp.new(
+          "\\s*" + @text.split(/ +/).map { |elt|
+            Regexp.escape(elt)
+          }.join("\\s+"),
+          Regexp::IGNORECASE
+        )
+        @pos = page_text.index(re)
+        unless @pos
+          warn("Could not find TOC entry `#{@text}' on page #@page")
+          return @pos = -2
+        end
+        if @number
+          re = /\s*#@number\W*\z/
+          @pos = page_text[0, @pos].rindex(re) || @pos
+        end
+        return @pos
+      end
+
+      #
+      # Returns a two-element array of the page number and the index in the page
+      # text where to start.
+      #
+      def range_start
+        return [ @page, pos ]
+      end
+
+      #
+      # Computes the position of the end of the section. Returns a two-element
+      # array of the page number and index in the page text where to stop.
+      #
+      def range_end
+        return @range_end if @range_end
+        book = @toc.book
+        if !next_entry
+          last_page = book.page_manager.last_page
+          @range_end = [ last_page, book.page(last_page).length ]
+        else
+          @range_end = book.page_manager.last_pos(
+            next_entry.page, next_entry.pos
+          )
+        end
+        return @range_end
+      end
+
+      def to_s
+        "#{'  ' * @level}#{@number}#{@number ? '.' : '-'} #{@text} -- #{@page}.#{pos}"
+      end
+
+      def print
+        puts to_s
+      end
+
+      # The fully qualified section number of this entry.
+      def full_number
+        return number unless @parent
+        return @parent.full_number + @toc.level_sep + number
+      end
+
+      #
+      # Finds all subentries to this entry, in order. The entry itself is not
+      # included.
+      #
+      def subentries
+        cur = next_entry
+        res = []
+        until cur.nil? or cur.level <= @level
+          res.push(cur)
+          cur = cur.next_entry
+        end
+        return res
+      end
+
+      def last_subentry
+        subentries.last || self
+      end
+
+    end
+
+  end
+
+end
