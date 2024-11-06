@@ -1,3 +1,9 @@
+require_relative 'textbook/toc'
+require_relative 'textbook/reading'
+require_relative 'textbook/page_info'
+
+
+
 class Textbook
 
   include Structured
@@ -83,6 +89,14 @@ class Textbook
 
     @ignore_re ||= []
 
+  end
+
+  #
+  # Reads in the text file, splitting into sheets. This is done lazily so a
+  # textbook need not be read into memory unless it is used.
+  #
+  def read_sheets
+    return @sheets if @sheets
     @sheets = open(@file) do |io|
       io.read.split("\f").map { |sheet|
         @ignore_re.each do |ignore|
@@ -92,22 +106,22 @@ class Textbook
       }
     end
     @sheets.unshift("") # So array indices match PDF page numbers
+    return @sheets
   end
-
 
 
   #
   # Returns the number of sheets in the document.
   #
   def num_sheets
-    return @sheets.count - 1
+    return read_sheets.count - 1
   end
 
   #
   # Iterates over sheets.
   #
   def each_sheet
-    @sheets.each_with_index do |sheet, sheet_num|
+    read_sheets.each_with_index do |sheet, sheet_num|
       next if sheet_num == 0
       yield(sheet, sheet_num)
     end
@@ -126,8 +140,8 @@ class Textbook
   # Returns the text for the given sheet.
   #
   def sheet(num)
-    raise "Invalid sheet number" if num <= 0 || num >= @sheets.count
-    return @sheets[num]
+    raise "Invalid sheet number" if num <= 0 || num >= read_sheets.count
+    return read_sheets[num]
   end
 
   #

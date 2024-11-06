@@ -1,11 +1,84 @@
-#!/usr/bin/env ruby
-
+require 'structured'
 require 'date'
 
 #
 # Computes dates for a class based on academic calendar information.
 #
 class AcademicCalendar
+
+  class DateRange
+
+    include Structured
+
+    set_description <<~EOF
+      A date range, with an optional explanatory description.
+    EOF
+
+    #
+    # A date range may be given in text with the form:
+    #
+    #   <start-date> [ " to " <end-date> ] [ ", " <explanation> ]
+    #
+    # If <end-date> is omitted, then it is the same as <start-date>. Returns a
+    # hash amenable as use for an input to DateRange.
+    #
+    def self.parse(text)
+      if text =~ /\A(.*)(?: to (.*))?(?:, (.*))\z/
+        s, e, exp = $1, $2, $3
+        return {
+          :start => s,
+          :stop => e || s,
+          :explanation => exp
+        }.compact
+      else
+        raise Structured::InputError, "Invalid DateRange string"
+      end
+    end
+
+    include Structured
+
+    element(
+      :start, Date, preproc: proc { |s| Date.parse(s) },
+      description: "Start date of the date range",
+    )
+
+    element(
+      :stop, Date, preproc: proc { |s| Date.parse(s) },
+      description: "end date of the date range",
+      optional: true
+    )
+
+    element(
+      :explanation, String, description: "Explanation for the date range",
+      optional: true
+    )
+
+
+    #
+    # Checks that the start and stop dates are a reasonable range.
+    #
+    def post_initialize
+      @stop ||= @start
+      raise Structure::InputError, "Invalid date range" if @stop < @start
+    end
+
+    #
+    # Tests whether a date is included in the range.
+    #
+    def include?(date)
+      date >= @start && date <= @stop
+    end
+
+    #
+    # Returns all dates in the range.
+    #
+    def to_a
+      return (@start..@stop).to_a
+    end
+
+  end
+
+
 
   include Structured
   include Enumerable
@@ -17,13 +90,13 @@ class AcademicCalendar
   EOF
 
   element(
-    :first, Date,
+    :start, Date,
     description: "Start date of the semester",
     preproc: proc { |s| Date.parse(s) }
   );
 
   element(
-    :last, Date,
+    :stop, Date,
     description: "End date of the semester",
     preproc: proc { |s| Date.parse(s) }
   );
@@ -61,6 +134,19 @@ class AcademicCalendar
     optional: true,
   )
 
+  #
+  # Produces a textual description of this academic calendar's relevant period.
+  # The start date of the course is used as the basis for this description, and
+  # the month determines the relevant season returned.
+  #
+  def description
+    case @start.month
+    when 1..4 then "Spring #{@start.year}"
+    when 5..7 then "Summer #{@start.year}"
+    when 8..10 then "Fall #{@start.year}"
+    else "Winter #{@start.year}"
+    end
+  end
 
 
   #
@@ -83,7 +169,7 @@ class AcademicCalendar
 
     # Make sure the date meets the day-of-week and range tests
     return [ false, nil ] unless @days.include?(date.strftime("%A"))
-    return [ false, nil ] if date < @first || date > @last
+    return [ false, nil ] if date < @start || date > @stop
 
     # If the date is in a skip range, then it is not included
     if @skip
@@ -108,85 +194,13 @@ class AcademicCalendar
 
     # Technically the @add dates could be outside the ordinary calendar, so we
     # need to consider the earliest and latest @add dates too.
-    start = [ @first, @add && @add.first ].compact.min
-    stop = [ @last, @add && @add.last ].compact.max
+    real_start = [ @start, @add && @add.first ].compact.min
+    real_stop = [ @stop, @add && @add.stop ].compact.max
 
-    start.upto(stop) do |date|
+    real_start.upto(real_stop) do |date|
       has_class, expl = check(date)
       yield(date, has_class, expl) if has_class || expl
     end
-  end
-
-  #
-  #
-  class DateRange
-
-    set_description <<~EOF
-      A date range, with an optional explanatory description.
-    EOF
-
-    #
-    # A date range may be given in text with the form:
-    #
-    #   <start-date> [ " to " <end-date> ] [ ", " <explanation> ]
-    #
-    # If <end-date> is omitted, then it is the same as <start-date>. Returns a
-    # hash amenable as use for an input to DateRange.
-    #
-    def self.parse(text)
-      if text =~ /\A(.*)(?: to (.*))?(?:, (.*))\z/
-        s, e, exp = $1, $2, $3
-        return {
-          :first => s,
-          :last => e || s,
-          :explanation => exp
-        }.compact
-      else
-        raise Structured::InputError, "Invalid DateRange string"
-      end
-    end
-
-    include Structured
-
-    element(
-      :first, Date, preproc: proc { |s| Date.parse(s) },
-      description: "Start date of the date range",
-    )
-
-    element(
-      :last, Date, preproc: proc { |s| Date.parse(s) },
-      description: "end date of the date range",
-      optional: true
-    )
-
-    element(
-      :explanation, String, description: "Explanation for the date range",
-      optional: true
-    )
-
-
-    #
-    # Checks that the first and last dates are a reasonable range.
-    #
-    def post_initialize
-      @last ||= @first
-      raise Structure::InputError, "Invalid date range" if @last < @first
-    end
-
-    #
-    # Tests whether a date is included in the range.
-    #
-    def include?(date)
-      date >= @first && date <= @last
-    end
-
-    #
-    # Returns all dates in the range.
-    #
-    def to_a
-      return (@first..@last).to_a
-    end
-
   end
 
 end

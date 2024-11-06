@@ -21,8 +21,12 @@ class Textbook
     EOF
 
     element(
-      :book, String, optional: true,
-      description: "The book from which the reading comes",
+      :book, String, optional: true, preproc: proc { |b|
+        b.is_a?(Hash) ? get_syllabus.make_anonymous_textbook(b) : b
+      }, description: <<~EOF,
+        The book from which the reading comes. Alternatively, specify a hash
+        which will be used to instantiate a Textbook object.
+      EOF
     )
 
     element(:note, String, optional: true, description: <<~EOF)
@@ -97,23 +101,31 @@ class Textbook
     end
 
     #
+    # Find the Syllabus object associated with this reading. It should be a
+    # parent object.
+    #
+    def get_syllabus
+      return @syllabus if @syllabus
+      obj = self
+      obj = obj.parent while obj && !obj.is_a?(Syllabus)
+      unless obj
+        raise Structured::InputError, "No Course associated with Reading"
+      end
+      return (@syllabus = obj)
+    end
+
+
+    #
     # Retrieves the Textbook object associated with this Reading.
     #
     def get_book
       return @the_book if @the_book
 
-      # Find the Course
-      obj = self
-      obj = obj.parent while obj && !obj.is_a?(Course)
-      unless obj
-        raise Structured::InputError, "No Course associated with Reading"
-      end
-
       # Find the book
       if @book
-        @the_book = obj.get_textbook(@book)
+        @the_book = get_syllabus.get_textbook(@book)
       else
-        @the_book = obj.default_textbook
+        @the_book = get_syllabus.default_textbook
       end
       raise "No book #@book found" unless @the_book
       return @the_book
