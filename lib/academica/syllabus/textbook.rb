@@ -42,7 +42,7 @@ class Textbook
   )
 
   element(
-    :page_info, PageManager, optional: true,
+    :page_info, PageInfo, optional: true,
     description: "Information mapping document sheets to displayed pages",
   )
 
@@ -140,13 +140,16 @@ class Textbook
   #
   # Parses the table of contents into a data structure.
   #
+  # TODO: This really belongs in toc.rb
+  #
   def parse_toc
     return unless @toc
-    @toc.range.each do |toc_sheet_num|
-      sheet(toc_sheet_num).each_line do |line|
-        @toc.parse_line(line)
-      end
-    end
+    @toc.parse
+    #@toc.range.each do |toc_sheet_num|
+      #sheet(toc_sheet_num).each_line do |line|
+        #@toc.parse_line(line)
+      #end
+    #end
   end
 
 

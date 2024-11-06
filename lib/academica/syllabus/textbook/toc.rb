@@ -1,17 +1,16 @@
 class Textbook
-
-  #
-  # A data structure for a hierarchical table of contents. The table is an
-  # ordered list of Entries.
-  #
   class TableOfContents
 
-    def inspect
-      "#<#{self.class.name}>"
-    end
+    include Structured
 
-    def initialize(book, hash)
-      @book = book
+    set_description <<~EOF
+      A data structure for a hierarchical table of contents. The object is
+      initialized with patterns for table of contents entries, and then the
+      relevant pages of the table of contents are parsed to produce Entry
+      objects.
+    EOF
+
+    def pre_initialize
 
       #
       # As the table of contents is built up, a stack of the current hierarchy
@@ -20,27 +19,122 @@ class Textbook
       #
       @stack = []
       @entries = []
-
-      return if hash.empty?
-
-      # The range of pages where the TOC is found
-      raise "No TOC page range given" unless hash['range'].is_a?(Array)
-      @range = Range.new(hash['range'].first, hash['range'].last)
-
-      # A regular expression for finding the page number of an entry
-      @page_re = Regexp.new(hash['page_re'])
-
-      # A list of the hierarchical numbers of sections
-      @hierarchy = hash['hierarchy'].map { |level| Regexp.new(level) }
-
-      @ignore = (hash['ignore_re'] || []).map { |re| Regexp.compile(re) }
-
-      # The separator for levels.
-      @level_sep = hash['level_sep'] || '.'
-
     end
 
-    attr_reader :range, :level_sep, :book
+    element(
+      :range, Range, preproc: proc { |arr|
+        if arr.is_a?(Array) && arr.count == 2 && arr.first <= arr.last
+          arr.first .. arr.last
+        else
+          arr
+        end
+      },
+      description: <<~EOF,
+        The range of PDF sheet numbers containing the TOC, given as a 2-element
+        array
+      EOF
+    )
+    
+    element(
+      :page_re, Regexp,
+      description: "A regular expression for finding an entry's page number",
+    )
+
+    element(
+      :hierarchy, [ Regexp ],
+      description: <<~EOF,
+        A list of regular expressions identifying the hierarchy of TOC entries.
+        The first expression should identify the section number of the top-level
+        sections, the second expression the next level, and so on.
+      EOF
+    )
+
+    element(
+      :ignore_re, [ Regexp ], optional: true,
+      description: "List of regular expressions identifying material to ignore",
+    )
+
+    element(
+      :level_sep, String, optional: true, default: ".",
+      description: "Text for delimiting hierarchical levels",
+    )
+
+    def receive_parent(book)
+      @book = book
+    end
+    attr_reader :book
+
+    #
+    # Parses the table of contents of the associated textbook.
+    #
+    def parse
+      @range.each do |sheet_num|
+        @book.sheet(sheet_num).each_line do |line|
+          parse_line(line)
+        end
+      end
+    end
+
+    #
+    # Reads a line from the table of contents and updates the table.
+    #
+    def parse_line(line)
+
+      # Ignore lines as specified
+      return if @ignore.any? { |re| line =~ re }
+
+      # If the previous entry is still in need of a page number, then this line
+      # must be part of the last entry. Otherwise, determine if this is the
+      # start of a new entry. If so, create the new entry.
+      unless @entries.last && @entries.last.page.nil?
+        @hierarchy.each_with_index do |re, level|
+          if line =~ re
+            line = $'
+            add_entry($1, level)
+            break
+          end
+        end
+      end
+
+      # If there are no entries or the last entry is complete, then there ought
+      # to be no text here and anything left over is cruft, possibly suggesting
+      # a regular expression error.
+      if (@entries.empty? || @entries.last.page)
+        warn("Unexpected text in TOC: `#{line.strip}'") if line && line =~ /\S/
+        return
+      end
+
+      # If there is a page number, then pull it off and update the entry.
+      # Otherwise, the entire text is for the entry.
+      if line =~ @page_re
+        @entries.last.add_text($`)
+        @entries.last.page = $1
+      else
+        @entries.last.add_text(line)
+      end
+    end
+
+    #
+    # Creates a new entry in the table of contents, revising the stack
+    # accordingly.
+    #
+    def add_entry(number, level)
+      @stack = @stack.last(level)
+      if @stack.count < level
+        @stack = [ nil ] * (level - @stack.count) + @stack
+      end
+      raise "Invalid stack length" unless @stack.count == level
+      parent = @stack.find { |x| x }
+      entry = Entry.new(self, number, level, parent)
+      @entries.last.next_entry = entry unless @entries.empty?
+      @entries.push(entry)
+      @stack.unshift(entry)
+    end
+
+    def print
+      @entries.each do |entry| entry.print end
+    end
+
 
     #
     # Iterates over each entry in the table of contents.
@@ -123,66 +217,6 @@ class Textbook
     end
 
     #
-    # Reads a line from the table of contents and updates the table.
-    #
-    def parse_line(line)
-
-      # Ignore lines as specified
-      return if @ignore.any? { |re| line =~ re }
-
-      # If the previous entry is still in need of a page number, then this line
-      # must be part of the last entry. Otherwise, determine if this is the
-      # start of a new entry. If so, create the new entry.
-      unless @entries.last && @entries.last.page.nil?
-        @hierarchy.each_with_index do |re, level|
-          if line =~ re
-            line = $'
-            add_entry($1, level)
-            break
-          end
-        end
-      end
-
-      # If there are no entries or the last entry is complete, then there ought
-      # to be no text here and anything left over is cruft, possibly suggesting
-      # a regular expression error.
-      if (@entries.empty? || @entries.last.page)
-        warn("Unexpected text in TOC: `#{line.strip}'") if line && line =~ /\S/
-        return
-      end
-
-      # If there is a page number, then pull it off and update the entry.
-      # Otherwise, the entire text is for the entry.
-      if line =~ @page_re
-        @entries.last.add_text($`)
-        @entries.last.page = $1
-      else
-        @entries.last.add_text(line)
-      end
-    end
-
-    #
-    # Creates a new entry in the table of contents, revising the stack
-    # accordingly.
-    #
-    def add_entry(number, level)
-      @stack = @stack.last(level)
-      if @stack.count < level
-        @stack = [ nil ] * (level - @stack.count) + @stack
-      end
-      raise "Invalid stack length" unless @stack.count == level
-      parent = @stack.find { |x| x }
-      entry = Entry.new(self, number, level, parent)
-      @entries.last.next_entry = entry unless @entries.empty?
-      @entries.push(entry)
-      @stack.unshift(entry)
-    end
-
-    def print
-      @entries.each do |entry| entry.print end
-    end
-
-
 
 
     ########################################################################
