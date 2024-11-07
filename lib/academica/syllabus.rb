@@ -1,10 +1,10 @@
 require 'structured'
 
-require_relative 'syllabus/calendar'
-require_relative 'syllabus/textbook'
-# require_relative 'syllabus/coursepack'
-require_relative 'syllabus/formatter'
-require_relative 'syllabus/class_day'
+require 'academica/syllabus/calendar'
+require 'academica/syllabus/textbook'
+# require 'academica/syllabus/coursepack'
+require 'academica/syllabus/formatter'
+require 'academica/syllabus/class_day'
 
 
 class Syllabus
@@ -18,8 +18,8 @@ class Syllabus
     generate materials in various formats.
   EOF
 
-  element(:name, String, description = "The textual name of the course")
-  element(:number, String, description = "The course number")
+  element(:name, String, description: "The textual name of the course")
+  element(:number, String, description: "The course number")
 
   element(:books, { String => Textbook }, description: <<~EOF)
     The textbooks for the course, associated with nicknames for the books.
@@ -62,15 +62,15 @@ class Syllabus
   end
 
   #
-  # Constructs an anonymous textbook, and returns a reference name for it.
+  # Constructs an anonymous textbook, and returns a reference key for it.
   #
   def make_anonymous_textbook(hash)
     @anon_book_count += 1
-    name = "anon_book_#@anon_book_count"
+    key = "anon_book_#@anon_book_count"
     new_book = Textbook.new(hash, parent = self)
-    new_book.receive_key(name)
-    @books[name] = new_book
-    return name
+    new_book.receive_key(key)
+    @books[key] = new_book
+    return key
   end
 
   #
@@ -78,6 +78,7 @@ class Syllabus
   # day and applying a Formatter object to it.
   #
   def format(formatter)
+    raise "Invalid formatter" unless formatter.is_a?(Syllabus::Formatter)
     enum = @dates.to_enum
     begin
       @classes.each do |cgroup|
@@ -93,7 +94,7 @@ class Syllabus
 
         formatter.format_section(cgroup.section) if cgroup.section
 
-        @cgroup.classes.each do |cday|
+        cgroup.classes.each do |cday|
 
           date, has_class, expl = enum.next
           if !has_class

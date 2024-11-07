@@ -55,7 +55,7 @@ class Textbook
   )
 
   element(
-    :file, String, check: proc { |f| File.exist?(f) },
+    :file, String, check: proc { |f| File.exist?(f) }, optional: true,
     description: "Text file for the textbook",
   )
 
@@ -68,6 +68,9 @@ class Textbook
       These might include headers or footers.
     EOF
   )
+
+  # The nickname of the textbook
+  attr_reader :key
 
   element(
     :pdf_file, String, check: proc { |f| File.exist?(f) },
@@ -99,6 +102,7 @@ class Textbook
   #
   def read_sheets
     return @sheets if @sheets
+    return @sheets = [] unless @file
     @sheets = open(@file) do |io|
       io.read.split("\f").map { |sheet|
         @ignore_re.each do |ignore|
