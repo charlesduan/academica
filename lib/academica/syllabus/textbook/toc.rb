@@ -35,17 +35,19 @@ class Textbook
       EOF
     )
     
-    element(
-      :page_re, Regexp,
-      description: "A regular expression for finding an entry's page number",
-    )
+    element(:page_re, Regexp, description: <<~EOF)
+      A regular expression for finding an entry's page number. The page number
+      itself should be in a capturing group, and any preceding text (such as
+      leading dots) should also be part of the expression so it is discarded.
+    EOF
 
     element(
       :hierarchy, [ Regexp ],
       description: <<~EOF,
         A list of regular expressions identifying the hierarchy of TOC entries.
         The first expression should identify the section number of the top-level
-        sections, the second expression the next level, and so on.
+        sections, the second expression the next level, and so on. The
+        expression should have one capturing group for the section number.
       EOF
     )
 
@@ -55,8 +57,10 @@ class Textbook
     )
 
     element(
-      :level_sep, String, optional: true, default: ".",
-      description: "Text for delimiting hierarchical levels",
+      :level_sep, String, optional: true, default: ".", description: <<~EOF,
+        Text to be shown in output between section numbers. For example, if this
+        value is ".", then section I, subsection A would be printed as "I.A".
+      EOF
     )
 
     def receive_parent(book)
@@ -81,7 +85,7 @@ class Textbook
     def parse_line(line)
 
       # Ignore lines as specified
-      return if @ignore.any? { |re| line =~ re }
+      return if @ignore_re && @ignore_re.any? { |re| line =~ re }
 
       # If the previous entry is still in need of a page number, then this line
       # must be part of the last entry. Otherwise, determine if this is the
@@ -247,7 +251,7 @@ class Textbook
         @page = nil
       end
 
-      attr_reader :number, :parent, :text, :level
+      attr_reader :number, :parent, :text, :level, :toc
       attr_accessor :page, :next_entry
 
       def page=(page)
@@ -319,7 +323,8 @@ class Textbook
       end
 
       def to_s
-        "#{'  ' * @level}#{@number}#{@number ? '.' : '-'} #{@text} -- #{@page}.#{pos}"
+        "#{'  ' * @level}#{@number}#{@number ? '.' : '-'} " + \
+          "#{@text} -- #{@page}.#{pos}"
       end
 
       def print

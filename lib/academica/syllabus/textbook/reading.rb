@@ -1,3 +1,5 @@
+require 'structured'
+
 class Textbook
   #
   # Represents a single reading out of this book, consisting of a consecutive
@@ -33,7 +35,7 @@ class Textbook
       A textual note describing or adding information for this reading.
     EOF
 
-    element(:tag, String, optional: true, default: "Read", description <<~EOF)
+    element(:tag, String, optional: true, default: "Read", description: <<~EOF)
       An optional tag for introducing the reading (by default "Read")
     EOF
 

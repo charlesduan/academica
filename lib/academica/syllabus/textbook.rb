@@ -1,3 +1,5 @@
+require 'structured'
+
 require_relative 'textbook/toc'
 require_relative 'textbook/reading'
 require_relative 'textbook/page_info'
@@ -43,7 +45,7 @@ class Textbook
   )
 
   element(
-    :header_re, Regexp, preproc { |s| Regexp.compile(s) }, optional: true,
+    :header_re, Regexp, preproc: proc { |s| Regexp.compile(s) }, optional: true,
     description: "Regular expression for identifying headers within the book",
   )
 
@@ -159,11 +161,6 @@ class Textbook
   def parse_toc
     return unless @toc
     @toc.parse
-    #@toc.range.each do |toc_sheet_num|
-      #sheet(toc_sheet_num).each_line do |line|
-        #@toc.parse_line(line)
-      #end
-    #end
   end
 
 

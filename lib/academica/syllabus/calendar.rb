@@ -23,15 +23,15 @@ class AcademicCalendar
     # hash amenable as use for an input to DateRange.
     #
     def self.parse(text)
-      if text =~ /\A(.*)(?: to (.*))?(?:, (.*))\z/
-        s, e, exp = $1, $2, $3
+      m = /\A(.*?)(?: to (.*?))?(?:, (.*))?\z/.match(text)
+      if m
         return {
-          :start => s,
-          :stop => e || s,
-          :explanation => exp
+          :start => m[1],
+          :stop => m[2] || m[1],
+          :explanation => m[3]
         }.compact
       else
-        raise Structured::InputError, "Invalid DateRange string"
+        raise "Invalid DateRange string"
       end
     end
 
@@ -59,7 +59,7 @@ class AcademicCalendar
     #
     def post_initialize
       @stop ||= @start
-      raise Structure::InputError, "Invalid date range" if @stop < @start
+      raise Structured::InputError, "Invalid date range" if @stop < @start
     end
 
     #
@@ -164,7 +164,7 @@ class AcademicCalendar
     # If the date is in an add range, then it passes the test no matter what.
     if @add
       add_range = @add.find { |range| range.include?(date) }
-      return [ true, add_range.expl ] if add_range
+      return [ true, add_range.explanation ] if add_range
     end
 
     # Make sure the date meets the day-of-week and range tests
@@ -174,7 +174,7 @@ class AcademicCalendar
     # If the date is in a skip range, then it is not included
     if @skip
       skip_range = @skip.find { |range| range.include?(date) }
-      return [ false, skip_range.expl ] if skip_range
+      return [ false, skip_range.explanation ] if skip_range
     end
 
     # Otherwise, the date is in the calendar.
@@ -194,8 +194,8 @@ class AcademicCalendar
 
     # Technically the @add dates could be outside the ordinary calendar, so we
     # need to consider the earliest and latest @add dates too.
-    real_start = [ @start, @add && @add.first ].compact.min
-    real_stop = [ @stop, @add && @add.stop ].compact.max
+    real_start = [ @start, @add && @add.map(&:start).min ].compact.min
+    real_stop = [ @stop, @add && @add.map(&:stop).max ].compact.max
 
     real_start.upto(real_stop) do |date|
       has_class, expl = check(date)
