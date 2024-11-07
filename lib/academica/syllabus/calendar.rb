@@ -59,7 +59,9 @@ class AcademicCalendar
     #
     def post_initialize
       @stop ||= @start
-      raise Structured::InputError, "Invalid date range" if @stop < @start
+      if @stop < @start
+        raise Structured::InputError, "Stop date is before start date"
+      end
     end
 
     #

@@ -40,7 +40,7 @@ class HtmlFormatter < Formatter
 
   def format_reading(reading, pagetext, start_page, stop_page)
     puts "<li>"
-    puts "(Optional)" if reading.optional?
+    puts "(Optional)" if reading.optional
     if reading.book.url
       print "<a href=\"#{reading.book.url}\">"
       print "#{escape(reading.book.fullname)}</a>"

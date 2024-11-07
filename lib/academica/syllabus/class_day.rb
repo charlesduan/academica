@@ -29,11 +29,23 @@ class Syllabus
     attr_accessor :sequence
 
     def word_count
-      readings.reject(&:optional).sum(&:word_count)
+      required = readings.reject(&:optional)
+      web = false
+      if required.find(&:no_file?)
+        web = true
+        required = required.reject(&:no_file?)
+      end
+      return required.sum(&:word_count).to_s + (web ? "+web" : "")
     end
 
     def page_count
-      readings.reject(&:optional).sum(&:page_count)
+      required = readings.reject(&:optional)
+      web = false
+      if required.find(&:no_file?)
+        web = true
+        required = required.reject(&:no_file?)
+      end
+      return required.sum(&:page_count).to_s + (web ? "+web" : "")
     end
 
   end

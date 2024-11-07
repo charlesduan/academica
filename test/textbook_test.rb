@@ -16,7 +16,6 @@ class TextbookTest < Minitest::Test
     @textbook = Textbook.new(@full_book_input)
 
     @toc = @textbook.toc
-    @toc.parse
 
     @entries = @toc.to_a
   end
@@ -31,6 +30,32 @@ class TextbookTest < Minitest::Test
     assert_equal 5, t.num_sheets
 
     assert_match(/This is the text of page 5/, t.sheet(4))
+  end
+
+  def test_incomplete_book
+    assert_raises(Structured::InputError) {
+      Textbook.new({ name: "Textbook" })
+    }
+  end
+
+  def test_url_book
+    t = Textbook.new({ name: "Textbook", url: "http://www.google.com" })
+    assert_equal "Textbook", t.name
+    assert_equal "http://www.google.com", t.url
+    assert_nil t.file
+  end
+
+  def test_nothing_book
+    assert_raises(Structured::InputError) {
+      Textbook.new({ name: "Textbook" })
+    }
+  end
+
+  def test_url_book_parse
+    t = Textbook.new({ name: "Textbook", url: "http://www.google.com" })
+    assert_raises(RuntimeError) {
+      t.read_sheets
+    }
   end
 
   def test_page_info

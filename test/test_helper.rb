@@ -16,8 +16,8 @@ module TestHelper
       skip: [ "2024-11-14, Holiday" ],
     }
     @book_input = {
-      book1: { name: "Book One" },
-      book2: { name: "Book Two", default: true },
+      book1: { name: "Book One", url: "web1" },
+      book2: { name: "Book Two", url: "web2", default: true },
     }
     @class_group_1 = {
       classes: [

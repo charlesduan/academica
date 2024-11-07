@@ -52,7 +52,7 @@ class SlideFormatter
       %
       % #{escape(reading.book.fullname)}
       % Pages #{reading.start_page} to #{reading.stop_page}
-      % #{reading.optional? ? "Optional" : "Required"}
+      % #{reading.optional ? "Optional" : "Required"}
       %
 
     EOF

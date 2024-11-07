@@ -92,7 +92,7 @@ class Syllabus
     EOF
 
     def post_initialize
-      raise Structured::InputError, "No Textbook found" unless get_book
+      input_err("No Textbook found") unless get_book
 
       @texts = []
       @headers = []
@@ -108,9 +108,7 @@ class Syllabus
       return @syllabus if defined?(@syllabus)
       obj = self
       obj = obj.parent while obj && !obj.is_a?(Syllabus)
-      unless obj
-        raise Structured::InputError, "No Syllabus associated with Reading"
-      end
+      input_err("No Syllabus associated with Reading") unless obj
       return (@syllabus = obj)
     end
 
@@ -135,24 +133,34 @@ class Syllabus
     # Ensures that a range was given.
     #
     def check_range_presence
+
+      # If there is no file, then the only specification for the reading portion
+      # is the whole thing, so @all is automatically set here, and an error is
+      # raised if any other portion specification is given.
+      if no_file?
+        @all = true
+        if sec || sec_no_sub || start_sec || start
+          input_err("Cannot give page specification for book with no file")
+        end
+        if stop || after || stop_sec || after_sec || stop_sec_no_sub
+          input_err("Cannot give page specification for book with no file")
+        end
+      end
+
       return if all || sec || sec_no_sub
       unless start_sec || start
-        raise Structured::InputError, "No reading start point given"
+        input_err("No reading start point given")
       end
       # There are lots of stop point options
       return if stop || after
       return if stop_sec || after_sec || stop_sec_no_sub
-      raise Structured::InputError, "No reading stop point given"
+      input_err("No reading stop point given")
     end
 
 
     WORD_COUNT = 5
 
     attr_reader :texts, :headers
-
-    def optional?
-      return @optional
-    end
 
     def toc
       get_book.toc
@@ -211,11 +219,19 @@ class Syllabus
     ########################################################################
 
     #
+    # Whether the underlying textbook has no file.
+    #
+    def no_file?
+      return get_book.no_file?
+    end
+
+    #
     # Reads the position information. This allows for lazy evaluation of the
     # reading position, but comes with the drawback that the position is not
     # verified during the parsing process.
     #
     def read_pos
+      raise "Cannot determine range positions with no file" if no_file?
       return if defined? @range_start
       @range_start = find_start
       @range_end = find_stop
@@ -420,9 +436,9 @@ class Syllabus
     # Returns a three-element array of a descriptor of the reading's pages, the
     # start page, and the stop page or nil if there is only one page.
     #
-    def page_description(singular: "page", plural: "pages")
+    def page_description(singular: "page", plural: "pages", all: "all")
       if all
-        return [ "all", nil, nil ]
+        return [ all, nil, nil ]
       elsif one_page?
         return [ singular, range_start.page, nil ]
       else

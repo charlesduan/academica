@@ -28,7 +28,7 @@ class TextFormatter < Formatter
     else
       text << "-.#{reading.stop_pos}"
     end
-    text = "(Optional) #{text}" if reading.optional?
+    text = "(Optional) #{text}" if reading.optional
     line_break(text, '  ')
 
     # Show internal TOC entries

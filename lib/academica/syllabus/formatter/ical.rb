@@ -45,7 +45,7 @@ class IcalFormatter < Formatter
 
   def format_reading(reading, pagetext, start_page, stop_page)
     res = ''
-    res << "(Optional) " if reading.optional?
+    res << "(Optional) " if reading.optional
     res << "#{escape(reading.book.fullname)}, #{escape(pagetext)} #{start_page}"
     res << "-#{stop_page}" if stop_page
     res << "."

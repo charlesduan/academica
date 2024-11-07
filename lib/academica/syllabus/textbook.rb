@@ -85,10 +85,23 @@ class Textbook
   #
   def post_initialize
 
+    if no_file?
+      input_err("Either file or URL must be given") unless defined?(@url)
+      input_err("Can't provide page_info with no file") if defined?(@page_info)
+      input_err("Can't provide TOC with no file") if defined?(@toc)
+    end
+
     if defined?(@file) && !defined?(@pdf_file)
       @pdf_file = @file.sub(/\.txt\z/, '.pdf')
     end
 
+  end
+
+  #
+  # Returns whether there is a text file associated with this textbook.
+  #
+  def no_file?
+    return !defined?(@file)
   end
 
   #
@@ -97,7 +110,8 @@ class Textbook
   #
   def read_sheets
     return @sheets if defined?(@sheets)
-    return @sheets = [] unless @file
+    raise "Cannot read sheets if no file given" if no_file?
+
     @sheets = open(@file) do |io|
       io.read.split("\f").map { |sheet|
         @ignore_re.each do |ignore|
@@ -152,17 +166,6 @@ class Textbook
     return sheet(sheet_num_for(num))
   end
 
-  #
-  # Parses the table of contents into a data structure.
-  #
-  # TODO: This really belongs in toc.rb
-  #
-  def parse_toc
-    return unless @toc
-    @toc.parse
-  end
-
-
 
   #
   # Given an array of page texts and a starting page number, yields for each
@@ -180,13 +183,6 @@ class Textbook
         text = m.post_match
       end
     end
-  end
-
-  #
-  # XXX TODO Where is this used?
-  #
-  def reading(hash)
-    return Reading.new(self, hash)
   end
 
   #

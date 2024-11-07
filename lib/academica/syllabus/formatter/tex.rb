@@ -19,7 +19,7 @@ class TexFormatter < Formatter
   def format_reading(reading, pagetext, start_page, stop_page)
     if reading.tag
       res = "\\SyllabusHeading{#{escape(reading.tag)}}"
-    elsif reading.optional?
+    elsif reading.optional
       res = "\\SyllabusHeading{Optional}"
     else
       res = "\\Read "
