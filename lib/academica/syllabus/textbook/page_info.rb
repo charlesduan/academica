@@ -88,11 +88,12 @@ class Textbook
       end
     end
 
+    undef last_page
     #
     # Returns the last page.
     #
     def last_page
-      return @last_page if @last_page
+      return @last_page if defined?(@last_page)
       return page_num_for(@parent.num_sheets)
     end
 

@@ -64,7 +64,7 @@ class TextbookTest < Minitest::Test
 
     assert_equal 5, t.num_sheets
 
-    assert_match /This is the text of page 5/, t.sheet(4)
+    assert_match(/This is the text of page 5/, t.sheet(4))
   end
 
   def test_page_info
@@ -89,7 +89,7 @@ class TextbookTest < Minitest::Test
     assert_equal 3, t.page_num_for(2)
     assert_equal 5, t.page_num_for(4)
 
-    assert_match /page 4/, t.page(4)
+    assert_match(/page 4/, t.page(4))
   end
 
   def setup_toc
@@ -149,7 +149,7 @@ class TextbookTest < Minitest::Test
   def test_toc_third_entry
     setup_toc
 
-    e1, e2, e3 = *@entries
+    e2, e3 = @entries[1], @entries[2]
     assert_nil e3.parent
     assert_equal e3, e2.next_entry
     assert_nil e3.next_entry

@@ -47,8 +47,8 @@ class SyllabusTest < Minitest::Test
 
   def test_fqn
     s = Syllabus.new(@syl_input)
-    assert_match /Test Course/, s.fqn
-    assert_match /TEST-000-001/, s.fqn
+    assert_match(/Test Course/, s.fqn)
+    assert_match(/TEST-000-001/, s.fqn)
   end
 
   def test_book

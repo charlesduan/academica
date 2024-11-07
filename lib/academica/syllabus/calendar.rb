@@ -119,7 +119,7 @@ class AcademicCalendar
         item.is_a?(String) ? DateRange.parse(item) : item
       }
     },
-    optional: true,
+    optional: true, default: [].freeze,
   )
 
 
@@ -131,7 +131,7 @@ class AcademicCalendar
         item.is_a?(String) ? DateRange.parse(item) : item
       }
     },
-    optional: true,
+    optional: true, default: [].freeze,
   )
 
   #

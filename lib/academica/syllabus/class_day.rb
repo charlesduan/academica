@@ -1,5 +1,5 @@
 require 'structured'
-require_relative 'textbook/reading'
+require 'academica/syllabus/reading'
 
 class Syllabus
 
@@ -14,7 +14,7 @@ class Syllabus
 
     element(:name, String, description: "A title describing the class")
     element(
-      :readings, [ Textbook::Reading ], optional: true, default: [].freeze,
+      :readings, [ Reading ], optional: true, default: [].freeze,
       description: "The readings for this class",
     )
 

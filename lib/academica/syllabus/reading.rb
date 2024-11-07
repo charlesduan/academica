@@ -1,6 +1,6 @@
 require 'structured'
 
-class Textbook
+class Syllabus
   #
   # Represents a single reading out of this book, consisting of a consecutive
   # range of pages.

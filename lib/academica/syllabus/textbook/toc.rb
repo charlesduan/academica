@@ -186,7 +186,7 @@ class Textbook
     # Returns an index mapping page numbers to arrays of TOC entries.
     #
     def entry_index
-      return @entry_index if @entry_index
+      return @entry_index if defined?(@entry_index)
       @entry_index = {}
       each do |entry|
         (@entry_index[entry.page] ||= []).push(entry)
@@ -252,8 +252,8 @@ class Textbook
         @page = nil
       end
 
-      attr_reader :number, :parent, :text, :level, :toc
-      attr_accessor :page, :next_entry
+      attr_reader :number, :parent, :text, :level, :toc, :page
+      attr_accessor :next_entry
 
       def page=(page)
         @page = page.to_i

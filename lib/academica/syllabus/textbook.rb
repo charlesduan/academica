@@ -1,8 +1,7 @@
 require 'structured'
 
-require_relative 'textbook/toc'
-require_relative 'textbook/reading'
-require_relative 'textbook/page_info'
+require 'academica/syllabus/textbook/toc'
+require 'academica/syllabus/textbook/page_info'
 
 
 
@@ -62,7 +61,7 @@ class Textbook
   element(
     :ignore_re, [ Regexp ],
     preproc: proc { |l| l.map { |s| Regexp.compile(s) } },
-    optional: true,
+    optional: true, default: [].freeze,
     description: <<~EOF,
       A list of regular expressions of lines of text in the textbook to ignore.
       These might include headers or footers.
@@ -79,12 +78,6 @@ class Textbook
   )
 
 
-  #
-  # Returns the PDF file for the textbook.
-  #
-  def pdf_file
-    return @pdf_file || @file.sub(/\.txt\z/, '.pdf')
-  end
 
   #
   # Reads the textbook file, removes headers and footers, and returns an array
@@ -92,7 +85,9 @@ class Textbook
   #
   def post_initialize
 
-    @ignore_re ||= []
+    if defined?(@file) && !defined?(@pdf_file)
+      @pdf_file = @file.sub(/\.txt\z/, '.pdf')
+    end
 
   end
 
@@ -101,7 +96,7 @@ class Textbook
   # textbook need not be read into memory unless it is used.
   #
   def read_sheets
-    return @sheets if @sheets
+    return @sheets if defined?(@sheets)
     return @sheets = [] unless @file
     @sheets = open(@file) do |io|
       io.read.split("\f").map { |sheet|
