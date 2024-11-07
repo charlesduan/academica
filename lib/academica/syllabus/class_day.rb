@@ -1,6 +1,7 @@
+require 'structured'
+require_relative 'textbook/reading'
+
 class Syllabus
-
-
 
   class ClassDay
 
@@ -13,12 +14,12 @@ class Syllabus
 
     element(:name, String, description: "A title describing the class")
     element(
-      :readings, [ Textbook::Reading ], optional: true,
+      :readings, [ Textbook::Reading ], optional: true, default: [].freeze,
       description: "The readings for this class",
     )
 
     element(
-      :assignments, [ String ], optional: true,
+      :assignments, [ String ], optional: true, default: [].freeze,
       description: "The assignments for this class",
     )
 
@@ -47,9 +48,10 @@ class Syllabus
       A group of classes with an optional heading.
     EOF
 
-    element(:classes, [ ClassDay ], description: <<~EOF)
-      List of classes within this group.
-    EOF
+    element(
+      :classes, [ ClassDay ], :check => proc { |l| !l.empty? },
+      description: "List of classes within this group.",
+    )
 
     element(:section, String, optional: true, description: <<~EOF)
       Section heading for this group.
