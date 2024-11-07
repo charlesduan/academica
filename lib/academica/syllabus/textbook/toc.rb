@@ -1,6 +1,7 @@
 class Textbook
   class TableOfContents
 
+    include Enumerable
     include Structured
 
     set_description <<~EOF

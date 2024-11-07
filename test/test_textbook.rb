@@ -92,8 +92,8 @@ class TextbookTest < Minitest::Test
     assert_match /page 4/, t.page(4)
   end
 
-  def test_toc
-    t = Textbook.new({
+  def setup_toc
+    @textbook = Textbook.new({
       name: "Test Book",
       file: @book_file.path,
       page_info: { start_page: 3, start_sheet: 2 },
@@ -108,37 +108,66 @@ class TextbookTest < Minitest::Test
       },
     })
 
-    t.toc.parse
+    @toc = @textbook.toc
+    @toc.parse
 
-    enum = t.toc.to_enum
+    @entries = @toc.to_a
+  end
 
-    e1 = enum.next
-    assert_kind_of Textbook::TableOfContents::Entry, e1
+  def test_toc_entries
+    setup_toc
+
+    assert_equal 3, @entries.count
+    @entries.each do |entry|
+      assert_kind_of Textbook::TableOfContents::Entry, entry
+      assert_equal @toc, entry.toc
+    end
+  end
+
+  def test_toc_first_entry
+    setup_toc
+
+    e1 = @entries[0]
     assert_nil e1.parent
     assert_equal 4, e1.page
     assert_equal '1', e1.number
     assert_equal 0, e1.level
-    assert_equal t.toc, e1.toc
 
-    e2 = enum.next
+  end
+
+  def test_toc_second_entry
+    setup_toc
+
+    e1, e2 = @entries[0], @entries[1]
     assert_equal e1, e2.parent
     assert_equal e2, e1.next_entry
     assert_equal 1, e2.level
     assert_equal 'A', e2.number
 
-    e3 = enum.next
+  end
+
+  def test_toc_third_entry
+    setup_toc
+
+    e1, e2, e3 = *@entries
     assert_nil e3.parent
     assert_equal e3, e2.next_entry
     assert_nil e3.next_entry
     assert_equal 0, e3.level
     assert_equal '2', e3.number
+  end
 
-    assert_raises(StopIteration) { enum.next }
+  def test_toc_entries_on
+    setup_toc
+    e1, e2, e3 = *@entries
+    assert_equal [ e1 ], @toc.entries_on(4)
+    assert_equal [ e2 ], @toc.entries_on(5)
+    assert_equal [ e3 ], @toc.entries_on(6)
+  end
 
-    assert_equal [ e1 ], t.toc.entries_on(4)
-    assert_equal [ e2 ], t.toc.entries_on(5)
-    assert_equal [ e3 ], t.toc.entries_on(6)
-
+  def test_toc_subentries
+    setup_toc
+    e1, e2, e3 = *@entries
     assert_equal [ e2 ], e1.subentries
     assert_equal e2, e1.last_subentry
 
