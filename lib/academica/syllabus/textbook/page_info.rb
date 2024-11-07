@@ -1,7 +1,7 @@
+require 'academica/syllabus/page_pos'
+
 class Textbook
 
-  #
-  #
   class PageInfo
 
     include Structured
@@ -50,20 +50,12 @@ class Textbook
 
     #
     # Iterates over pages in the document, yielding for the content and the
-    # page number. If start is given, it may be a page number or a [page, pos]
-    # array; same with end.
+    # page number. If start is given, it may be a page number or a PagePos
+    # object; same with end.
     #
     def each_page(start: nil, stop: nil)
-      start_page, start_pos = case start
-                              when nil then [ nil, nil ]
-                              when Numeric then [ start, nil ]
-                              when Array then start
-                              end
-      stop_page, stop_pos   = case stop
-                              when nil then [ nil, nil ]
-                              when Numeric then [ stop, nil ]
-                              when Array then stop
-                              end
+      start_page = start && start.is_a?(PagePos) ? start.page : start
+      stop_page = stop && stop.is_a?(PagePos) ? stop.page : stop
 
       @parent.each_sheet do |sheet, sheet_num|
         next if sheet_num < @start_sheet
@@ -72,16 +64,19 @@ class Textbook
         # Test the page for being within range.
         #
         page = page_num_for(sheet_num)
-        break if page > last_page
-        next if (start_page && page < start_page)
-        next if (stop_page && page > stop_page)
+        next if start_page && page < start_page
+        break if stop_page && page > stop_page
 
         #
-        # Trim the text of the first and last pages. If first_page == last_page,
-        # then trimming from the end first produces the right result.
+        # Trim the text of the first and last pages. Do the stop page condition
+        # first in case both positions are on the same page.
         #
-        sheet = sheet[0, stop_pos] if page == stop_page && stop_pos
-        sheet = sheet[start_pos..-1] if page == start_page && start_pos
+        if stop_page && page == stop_page && stop.is_a?(PagePos)
+          sheet = sheet[0, stop_pos]
+        end
+        if start_page && page == start_page && start.is_a?(PagePos)
+          sheet = sheet[start.pos .. -1]
+        end
 
         # Yield the page.
         yield(sheet, page)
@@ -105,17 +100,25 @@ class Textbook
     end
 
     #
-    # If pos is nonzero, returns page and pos. Otherwise, returns the previous
-    # page number and its length.
+    # Takes a PagePos, treating it as an ending position, and determines whether
+    # it would produce a blank page. If so, then returns a PagePos pointing to
+    # the previous page's end.
     #
-    def last_pos(page, pos)
-      if @parent.page(page)[0, pos] =~ /\A\s*\z/
-        return [ page, pos ] if page == @start_page
-        page = page_offset(page, -1)
-        return [ page, page_length(page) ]
-      else
-        return [ page, pos ]
-      end
+    # TODO: What if the previous page is blank?
+    #
+    def truncate_pos(page_pos)
+      text = page_pos.text_before(@parent)
+      return page_pos if text =~ /\S/
+      return page_pos if page_pos.page == @start_page
+      page = page_offset(page_pos.page, -1)
+      return PagePos.new(page, page_length(page))
+    end
+
+    #
+    # Returns the last possible position in this book.
+    #
+    def last_pos
+      return truncate_pos(PagePos.new(last_page, page_length(last_page)))
     end
 
   end

@@ -1,3 +1,5 @@
+require 'academica/syllabus/page_pos'
+
 class Textbook
   class TableOfContents
 
@@ -18,8 +20,6 @@ class Textbook
       # is maintained. The stack is a reversed list of the ancestry of the
       # current entry being built.
       #
-      @stack = []
-      @entries = []
     end
 
     element(
@@ -70,14 +70,19 @@ class Textbook
     attr_reader :book
 
     #
-    # Parses the table of contents of the associated textbook.
+    # Returns the list of entries. Parses the table of contents of the
+    # associated textbook if the entries have not been found yet.
     #
-    def parse
+    def entries
+      return @entries if defined? @entries
+      @stack = []
+      @entries = []
       @range.each do |sheet_num|
         @book.sheet(sheet_num).each_line do |line|
           parse_line(line)
         end
       end
+      return @entries
     end
 
     #
@@ -137,7 +142,7 @@ class Textbook
     end
 
     def print
-      @entries.each do |entry| entry.print end
+      entries.each do |entry| entry.print end
     end
 
 
@@ -145,9 +150,9 @@ class Textbook
     # Iterates over each entry in the table of contents.
     #
     def each(start: nil, stop: nil)
-      @entries.each do |entry|
-        next if start && (entry.range_start <=> start) == -1
-        next if stop && (entry.range_end <=> stop) == 1
+      entries.each do |entry|
+        next if start && entry.range_start < start
+        next if stop && entry.range_end > stop
         yield(entry)
       end
     end
@@ -172,7 +177,7 @@ class Textbook
       # the next text to match, and require that any subsequent matching entries
       # be on a level higher than the found entry.
       #
-      @entries.each do |entry|
+      entries.each do |entry|
         return nil if entry.level <= level
         next unless entry.text.include?(texts.first)
         texts.shift
@@ -248,8 +253,6 @@ class Textbook
         @number = number == '' ? nil : number
         @level = level
         @parent = parent
-        @text = nil
-        @page = nil
       end
 
       attr_reader :number, :parent, :text, :level, :toc, :page
@@ -260,8 +263,8 @@ class Textbook
       end
 
       def add_text(text)
-        return if @page
-        if @text
+        raise "Can't add text to Entry after page number" if defined? @page
+        if defined? @text
           text = text.strip
           @text += " " + text.strip unless text == ''
         else
@@ -275,9 +278,10 @@ class Textbook
       # for. Returns a number indicating the index of the page text's string
       # where the heading is found.
       #
-      def pos
-        return @pos if @pos
-        return @pos = -1 if @page.nil?
+      def page_pos
+        return @page_pos if defined? @page_pos
+        raise "Can't compute page pos without page number" unless defined? @page
+
         page_text = @toc.book.page(@page)
         re = Regexp.new(
           "\\s*" + @text.split(/ +/).map { |elt|
@@ -285,24 +289,28 @@ class Textbook
           }.join("\\s+"),
           Regexp::IGNORECASE
         )
-        @pos = page_text.index(re)
-        unless @pos
+        pos = page_text.index(re)
+        unless pos
           warn("Could not find TOC entry `#{@text}' on page #@page")
-          return @pos = -2
+          # Assume that the heading is halfway through the page
+
+          pos = page_text.length / 2
         end
+
+        # Search for the section number near the end of the text.
         if @number
           re = /\s*#@number\W*\z/
-          @pos = page_text[0, @pos].rindex(re) || @pos
+          pos = page_text[0, pos].rindex(re) || pos
         end
-        return @pos
+        return @page_pos = PagePos.new(@page, pos)
       end
 
       #
       # Returns a two-element array of the page number and the index in the page
-      # text where to start.
+      # text where to start. (This is the same as page_pos now.)
       #
       def range_start
-        return [ @page, pos ]
+        return page_pos
       end
 
       #
@@ -310,22 +318,18 @@ class Textbook
       # array of the page number and index in the page text where to stop.
       #
       def range_end
-        return @range_end if @range_end
-        book = @toc.book
-        if !next_entry
-          last_page = book.page_manager.last_page
-          @range_end = [ last_page, book.page(last_page).length ]
+        return @range_end if defined? @range_end
+        if next_entry
+          @range_end = @toc.book.page_info.truncate_pos(next_entry.page_pos)
         else
-          @range_end = book.page_manager.last_pos(
-            next_entry.page, next_entry.pos
-          )
+          @range_end =  @toc.book.page_info.last_pos
         end
         return @range_end
       end
 
       def to_s
         "#{'  ' * @level}#{@number}#{@number ? '.' : '-'} " + \
-          "#{@text} -- #{@page}.#{pos}"
+          "#{@text} -- #@page_pos"
       end
 
       def print

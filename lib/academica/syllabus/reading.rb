@@ -43,7 +43,7 @@ class Syllabus
       Whether this reading is optional
     EOF
 
-    element(:all, :boolean, optional: true, description: <<~EOF)
+    element(:all, :boolean, optional: true, default: false, description: <<~EOF)
       Include the entire textbook as the reading.
     EOF
 
@@ -94,12 +94,10 @@ class Syllabus
     def post_initialize
       raise Structured::InputError, "No Textbook found" unless get_book
 
-      @start_page, @start_pos = find_start
-      @stop_page, @stop_pos = find_stop
-
       @texts = []
       @headers = []
 
+      check_range_presence
     end
 
     #
@@ -107,25 +105,24 @@ class Syllabus
     # parent object.
     #
     def get_syllabus
-      return @syllabus if @syllabus
+      return @syllabus if defined?(@syllabus)
       obj = self
       obj = obj.parent while obj && !obj.is_a?(Syllabus)
       unless obj
-        raise Structured::InputError, "No Course associated with Reading"
+        raise Structured::InputError, "No Syllabus associated with Reading"
       end
       return (@syllabus = obj)
     end
-
 
     #
     # Retrieves the Textbook object associated with this Reading.
     #
     def get_book
-      return @the_book if @the_book
+      return @the_book if defined?(@the_book)
 
       # Find the book
-      if @book
-        @the_book = get_syllabus.get_textbook(@book)
+      if defined? @book
+        @the_book = get_syllabus.books[@book]
       else
         @the_book = get_syllabus.default_textbook
       end
@@ -134,10 +131,24 @@ class Syllabus
     end
 
 
+    #
+    # Ensures that a range was given.
+    #
+    def check_range_presence
+      return if all || sec || sec_no_sub
+      unless start_sec || start
+        raise Structured::InputError, "No reading start point given"
+      end
+      # There are lots of stop point options
+      return if stop || after
+      return if stop_sec || after_sec || stop_sec_no_sub
+      raise Structured::InputError, "No reading stop point given"
+    end
+
+
     WORD_COUNT = 5
 
-    attr_reader :start_page, :stop_page, :texts, :headers
-    attr_reader :start_pos, :stop_pos
+    attr_reader :texts, :headers
 
     def optional?
       return @optional
@@ -147,74 +158,20 @@ class Syllabus
       get_book.toc
     end
 
-    def range_start
-      return [ @start_page, @start_pos ]
-    end
-
-    def range_end
-      return [ @stop_page, @stop_pos ]
-    end
-
 
     ########################################################################
     #
-    # FINDING THE TEXT RANGE
+    # DESCRIBING A TEXT RANGE
     #
     ########################################################################
 
-    #
-    # Given a set of element names, looks through the parameter hash for this
-    # reading to see if any of those keys are defined. If so, finds a TOC entry
-    # with the corresponding value. Otherwise returns nil.
-    #
-    def toc_element(*elements)
-      elements.each do |elt|
-        val = send(elt)
-        next unless val
-        entry = toc.entry_named(val)
-        raise("No TOC entry named #{val}") unless entry
-        return entry
-      end
-      return nil
-    end
-
-    def find_start
-      if @all
-        return [ get_book.page_info.start_page, 0 ]
-      elsif (entry = toc_element(:start_sec, :sec, :sec_no_sub))
-        return entry.range_start
-      elsif @start
-        return extract_position(:start)
-      else
-        raise "No specification for the starting point"
-      end
-    end
-
-    def find_stop
-      if @all
-        lp = get_book.page_info.last_page
-        return [ lp, get_book.page_info.page_length(lp) ]
-      elsif (entry = toc_element(:stop_sec, :sec))
-        return entry.last_subentry.range_end
-      elsif (entry = toc_element(:stop_sec_no_sub, :sec_no_sub))
-        return entry.range_end
-      elsif (entry = toc_element(:after_sec))
-        get_book.page_info.last_pos(*entry.range_start)
-      elsif @stop
-        return extract_position(:stop)
-      elsif @after
-        return extract_position(:after)
-      else
-        raise "No specification for the ending point"
-      end
-    end
 
     #
     # Produces a textual summary of the reading, based on the given
     # specification.
     #
     def summarize
-      return nil if all?
+      return nil if all
       if (entry = toc_element(:sec, :sec_no_sub))
         return summarize_sec(entry)
       end
@@ -245,6 +202,82 @@ class Syllabus
 
 
 
+
+
+    ########################################################################
+    #
+    # FINDING THE TEXT RANGE
+    #
+    ########################################################################
+
+    #
+    # Reads the position information. This allows for lazy evaluation of the
+    # reading position, but comes with the drawback that the position is not
+    # verified during the parsing process.
+    #
+    def read_pos
+      return if defined? @range_start
+      @range_start = find_start
+      @range_end = find_stop
+    end
+
+    def range_start
+      read_pos
+      return @range_start
+    end
+
+    def range_end
+      read_pos
+      return @range_end
+    end
+
+
+    #
+    # Given a set of element names, looks through the parameter hash for this
+    # reading to see if any of those keys are defined. If so, finds a TOC entry
+    # with the corresponding value. Otherwise returns nil.
+    #
+    def toc_element(*elements)
+      elements.each do |elt|
+        val = send(elt)
+        next unless val
+        entry = toc.entry_named(val)
+        raise("No TOC entry named #{val}") unless entry
+        return entry
+      end
+      return nil
+    end
+
+    def find_start
+      return PagePos.new(get_book.page_info.start_page, 0) if @all
+
+      if (entry = toc_element(:start_sec, :sec, :sec_no_sub))
+        return entry.range_start
+      elsif defined? @start
+        return extract_position(:start)
+      else
+        raise "No specification for the starting point"
+      end
+    end
+
+    def find_stop
+      return get_book.page_info.last_pos if @all
+
+      if (entry = toc_element(:stop_sec, :sec))
+        return entry.last_subentry.range_end
+      elsif (entry = toc_element(:stop_sec_no_sub, :sec_no_sub))
+        return entry.range_end
+      elsif (entry = toc_element(:after_sec))
+        get_book.page_info.last_pos(*entry.range_start)
+      elsif defined? @stop
+        return extract_position(:stop)
+      elsif defined? @after
+        return extract_position(:after)
+      else
+        raise "No specification for the ending point"
+      end
+    end
+
     # The argument is a string that will be converted to a regular expression
     # according to the following rules:
     #
@@ -258,23 +291,33 @@ class Syllabus
 
 
     #
-    # Extracts a position
+    # Extracts a position for this reading based on a textual search. Type is
+    # :start, :stop, or :after, indicating which position is to be found. The
+    # text to find is based on an element with the same name as the type.
+    #
+    # The position depends on the type. For :start, it is the beginning of the
+    # match. For :stop, it is the end of the match. For :after, it is also the
+    # beginning of the match but it is truncated to the previous page if all the
+    # text on the matched page before the match is blank.
+    #
+    # In the case of multiple matches, the first is returned for :start, and the
+    # last is returned otherwise.
     #
     def extract_position(type)
       pattern = range_regexp(send(type))
       matches = []
-      pm = get_book.page_info
-      pm.each_page do |text, page_num|
+
+      pi = get_book.page_info
+      pi.each_page do |text, page_num|
         next unless (match = pattern.match(text))
-        case type
-        when :start
-          matches.push([ page_num, match.pre_match.length ])
-        when :stop
-          matches.push([ page_num, match.pre_match.length + match[0].length ])
-        when :after
-          matches.push(pm.last_pos(page_num, match.pre_match.length))
-        end
+        pp = PagePos.new(
+          page_num,
+          match.pre_match.length + (type == :stop ? match[0].length : 0)
+        )
+        pp = pi.truncate_pos(pp) if type == :after
+        matches.push(pp)
       end
+
       case matches.count
       when 0 then raise "Pattern #{pattern} not found"
       when 1 then return matches.first
@@ -287,6 +330,8 @@ class Syllabus
       end
     end
 
+
+
     #########################
     #
     # OUTPUTS
@@ -297,8 +342,7 @@ class Syllabus
     # Yields for each page in this reading.
     def each_page
       get_book.page_info.each_page(
-        start: [ @start_page, @start_pos ],
-        stop: [ @stop_page, @stop_pos ]
+        start: range_start, stop: range_end
       ) do |text, page|
         yield(text, page)
       end
@@ -317,7 +361,7 @@ class Syllabus
     # Returns a snippet of text at the start of the range.
     #
     def start_text
-      text = get_book.page(@start_page)[@start_pos..-1]
+      text = range_start.text_after(get_book)
       return text.split(/\s+/).first(WORD_COUNT).join(" ").strip
     end
 
@@ -325,7 +369,7 @@ class Syllabus
     # Returns a snippet of text at the end of the range.
     #
     def stop_text
-      text = get_book.page(@stop_page)[0, @stop_pos]
+      text = range_end.text_before(get_book)
       return text.split(/\s+/).last(WORD_COUNT).join(" ").strip
     end
 
@@ -344,38 +388,45 @@ class Syllabus
     # Returns a page count.
     #
     def page_count
-      return @stop_page - @start_page + 1
+      return page_range.count
     end
 
     #
     # Returns the page range as numbers.
     #
     def page_range
-      return @start_page..@stop_page
+      return range_start.page .. range_end.page
     end
 
+    # Tests whether the reading is all on one page.
+    def one_page?
+      return range_start.page == range_end.page
+    end
+
+
     def to_s
-      prefix = @book.default ? "Page" : "#{@book.fullname}, Page"
-      prefix = "(Optional) #{prefix}" if optional?
-      suffix = note ? " (#{note})" : ""
-      if @start_page == @stop_page
-        return "#{prefix} #@start_page#{suffix}"
+      if one_page?
+        res = [ "Page #{range_start.page}" ]
       else
-        return "#{prefix}s #@start_page-#@stop_page#{suffix}"
+        res = [ "Pages #{range_start.page}-#{range_end.page}" ]
       end
+      res.unshift("#{get_book.fullname},") unless get_book.default
+      res.unshift("(Optional)") if optional
+      res.push("(#{note})") if note
+      return res.join(" ")
     end
 
     #
     # Returns a three-element array of a descriptor of the reading's pages, the
     # start page, and the stop page or nil if there is only one page.
     #
-    def page_description
-      if all?
+    def page_description(singular: "page", plural: "pages")
+      if all
         return [ "all", nil, nil ]
-      elsif @start_page == @stop_page
-        return [ "page", @start_page, nil ]
+      elsif one_page?
+        return [ singular, range_start.page, nil ]
       else
-        return [ "pages", @start_page, @stop_page ]
+        return [ plural, range_start.page, range_end.page ]
       end
     end
 

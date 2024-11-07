@@ -6,58 +6,24 @@ require 'tempfile'
 
 class TextbookTest < Minitest::Test
 
+  include TestHelper
+
   def setup
+    setup_textbook
+  end
 
-    @book_file = Tempfile.new('book')
-    @book_file.write(<<~EOF)
-      TABLE OF CONTENTS
+  def setup_toc
+    @textbook = Textbook.new(@full_book_input)
 
-      1. First Section.........4
+    @toc = @textbook.toc
+    @toc.parse
 
-         A. A Subsection.......5
-
-      2. Second Section where
-         the name wraps to
-         multiple pages........6
-
-      \f
-      This is the text of page 3.
-
-      3
-      \f
-
-          1. First Section
-
-
-      This is the text of page 4.
-
-      4
-      \f
-
-      This is the text of page 5.
-
-         A. A Subsection
-
-      5
-      \f
-
-          2. Second Section where
-      the name wraps to multiple
-      pages
-
-      This is the text of page 6.
-
-      6
-    EOF
-    @book_file.close
+    @entries = @toc.to_a
   end
 
 
   def test_init
-    t = Textbook.new({
-      name: "Test Book",
-      file: @book_file.path,
-    })
+    t = Textbook.new(@book_input)
 
     assert_equal "Test Book", t.name
     assert_equal @book_file.path, t.file
@@ -68,7 +34,7 @@ class TextbookTest < Minitest::Test
   end
 
   def test_page_info
-    pi = Textbook::PageInfo.new({ start_page: 3, start_sheet: 2 })
+    pi = Textbook::PageInfo.new(@pageinfo_input)
     assert_equal 2, pi.sheet_num_for(3)
     assert_equal 4, pi.sheet_num_for(5)
 
@@ -77,11 +43,8 @@ class TextbookTest < Minitest::Test
   end
 
   def test_book_page_info
-    t = Textbook.new({
-      name: "Test Book",
-      file: @book_file.path,
-      page_info: { start_page: 3, start_sheet: 2 },
-    })
+    @book_input[:page_info] = @pageinfo_input
+    t = Textbook.new(@book_input)
 
     assert_equal 2, t.sheet_num_for(3)
     assert_equal 4, t.sheet_num_for(5)
@@ -90,28 +53,6 @@ class TextbookTest < Minitest::Test
     assert_equal 5, t.page_num_for(4)
 
     assert_match(/page 4/, t.page(4))
-  end
-
-  def setup_toc
-    @textbook = Textbook.new({
-      name: "Test Book",
-      file: @book_file.path,
-      page_info: { start_page: 3, start_sheet: 2 },
-      toc: {
-        range: [ 1, 1 ],
-        page_re: "\\.{2,}(\\d+)",
-        hierarchy: [
-          "^\\s*(\\d+)\\.\s+",
-          "^\\s*([A-Z])\\.\s+",
-        ],
-        ignore_re: [ "TABLE OF CONTENTS" ],
-      },
-    })
-
-    @toc = @textbook.toc
-    @toc.parse
-
-    @entries = @toc.to_a
   end
 
   def test_toc_entries
@@ -132,6 +73,7 @@ class TextbookTest < Minitest::Test
     assert_equal 4, e1.page
     assert_equal '1', e1.number
     assert_equal 0, e1.level
+    assert_equal 'First Section', e1.text
 
   end
 
@@ -173,6 +115,28 @@ class TextbookTest < Minitest::Test
 
     assert_equal [], e3.subentries
     assert_equal e3, e3.last_subentry
+  end
+
+  def test_entry_named
+    setup_toc
+    e1, e2, e3 = *@entries
+    assert_equal e1, @toc.entry_named("First Section")
+    assert_equal e2, @toc.entry_named("Subsection")
+    assert_equal e3, @toc.entry_named("Second Section")
+  end
+
+  def test_entry_named_fail
+    setup_toc
+    assert_nil @toc.entry_named("No Section Has This Name")
+  end
+
+  def test_entry_named_levels
+    setup_toc
+    assert_equal @entries[1], @toc.entry_named("First > ection")
+    assert_nil @toc.entry_named("First > Second")
+    assert_nil @toc.entry_named("Second > ection")
+    assert_nil @toc.entry_named("No Section > First")
+    assert_nil @toc.entry_named("First > First")
   end
 
 end

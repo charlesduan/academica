@@ -3,37 +3,10 @@ require 'academica/syllabus'
 
 class SyllabusTest < Minitest::Test
 
+  include TestHelper
+
   def setup
-    @syl_input = {
-      name: "Test Course",
-      number: "TEST-000-001",
-      books: {},
-      classes: [],
-      dates: { start: '2024-11-07', stop: '2024-11-21', days: %w(Thursday) },
-    }
-    @vacation_input = {
-      start: '2024-11-07', stop: '2024-11-28', days: %w(Thursday),
-      skip: [ "2024-11-14, Holiday" ],
-    }
-    @book_input = {
-      book1: { name: "Book One" },
-      book2: { name: "Book Two", default: true },
-    }
-    @class_group_1 = {
-      classes: [
-        { name: 'Group 1 Class 1', assignments: [ 'G1C1 Assignment' ] },
-      ]
-    }
-    @class_group_2 = {
-      section: 'Group 2',
-      classes: [
-        { name: 'Group 2 Class 1', assignments: [ 'G2C1 Assignment' ] },
-        { name: 'Group 2 Class 2' },
-      ]
-    }
-    @classes_input = [ @class_group_1, @class_group_2 ]
-
-
+    setup_syllabus_inputs
   end
 
   def test_syllabus
