@@ -123,7 +123,7 @@ class SyllabusTest < Minitest::Test
 
     assert_equal [
       'format_class_header 2024-11-07 Group 1 Class 1',
-      'format_noclass_header 2024-11-14 Holiday',
+      'format_noclass 2024-11-14 Holiday',
       'format_section Group 2',
       'format_class_header 2024-11-21 Group 2 Class 1',
       'format_class_header 2024-11-28 Group 2 Class 2',
@@ -152,8 +152,8 @@ class TestFormatter < Syllabus::Formatter
   def format_class_header(date, one_class)
     @record.push("format_class_header #{date.iso8601} #{one_class.name}")
   end
-  def format_noclass_header(date, expl)
-    @record.push("format_noclass_header #{date.iso8601} #{expl}")
+  def format_noclass(date, expl)
+    @record.push("format_noclass #{date.iso8601} #{expl}")
   end
   def format_assignments(assignments)
     @record.push("format_assignments #{assignments.join(', ')}") if @verbose

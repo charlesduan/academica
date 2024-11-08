@@ -1,9 +1,12 @@
+require 'texttools'
+
 #
 # Abstract class for output formatters.
 #
-
 class Syllabus
   class Formatter
+
+    include TextTools
 
     # Formats a single reading.
     def format_reading(reading, pagetext, start_page, stop_page)
@@ -34,7 +37,7 @@ class Syllabus
     end
 
     # Formats the header line for a non-class day.
-    def format_noclass_header(date, expl)
+    def format_noclass(date, expl)
       raise "Abstract method not implemented"
     end
 

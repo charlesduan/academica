@@ -37,6 +37,20 @@ class Syllabus
     Specification of the academic calendar for the course.
   EOF
 
+  element(:outfile, { String => String }, optional: true, default: {}.freeze,
+          description: <<~EOF)
+    A map of output files for each output formatter. The keys should be
+    identifiers for each formatter. If no file is given, then output will be
+    written to STDOUT.
+  EOF
+
+  element(:outopts, { String => Hash }, optional: true, default: {}.freeze,
+          description: <<~EOF)
+    A map of options for each output formatter. The keys should be identifiers
+    for each formatter, and the values should be a hash of options relevant to
+    the formatter.
+  EOF
+
   def pre_initialize
     @anon_book_count = 0
   end
@@ -87,7 +101,7 @@ class Syllabus
         # it.
         date, has_class, expl = enum.peek
         if !has_class
-          formatter.format_noclass_header(date, expl)
+          formatter.format_noclass(date, expl)
           enum.next
           redo
         end
@@ -98,7 +112,7 @@ class Syllabus
 
           date, has_class, expl = enum.next
           if !has_class
-            formatter.format_noclass_header(date, expl)
+            formatter.format_noclass(date, expl)
             redo
           end
 

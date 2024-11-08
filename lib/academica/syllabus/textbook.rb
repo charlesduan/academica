@@ -85,6 +85,8 @@ class Textbook
   #
   def post_initialize
 
+    @short = @name unless defined? @short
+
     if no_file?
       input_err("Either file or URL must be given") unless defined?(@url)
       input_err("Can't provide page_info with no file") if defined?(@page_info)
