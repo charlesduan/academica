@@ -20,6 +20,17 @@ class Syllabus
 
   element(:name, String, description: "The textual name of the course")
   element(:number, String, description: "The course number")
+  element(:instructor, String, optional: true, default: "TBD",
+          description: "The instructor name")
+  element(:location, String, optional: true, default: "TBD",
+          description: "The room number or location of class meetings")
+  element(:credits, String, optional: true, default: "TBD",
+          description: "Number of credits for this course")
+  element(:time, String, optional: true, default: "TBD",
+          check: proc { |s|
+            s == "TBD" || s =~ /\A1?\d:\d\d-1?\d:\d\d [AP]M\z/
+          },
+          description: "The time range for class meetings")
 
   element(:books, { String => Textbook }, description: <<~EOF)
     The textbooks for the course, associated with nicknames for the books.
@@ -56,7 +67,11 @@ class Syllabus
   end
 
   def post_initialize
-    @default_textbook = @books.values.find { |tb| tb.default }
+
+    # Find default textbook
+    defaults = @books.values.select { |tb| tb.default }
+    input_err("Too many default textbooks") if defaults.count > 1
+    @default_textbook = defaults[0]
 
     # Assign sequence numbers to classes
     seq = 1
@@ -94,7 +109,10 @@ class Syllabus
   def format(formatter)
     raise "Invalid formatter" unless formatter.is_a?(Syllabus::Formatter)
     enum = @dates.to_enum
+    formatter.pre_output(self)
+
     begin
+
       @classes.each do |cgroup|
 
         # Ensure that any vacation days precede the header rather than following
@@ -109,19 +127,19 @@ class Syllabus
         formatter.format_section(cgroup.section) if cgroup.section
 
         cgroup.classes.each do |cday|
-
           date, has_class, expl = enum.next
           if !has_class
             formatter.format_noclass(date, expl)
             redo
           end
-
           format_one_class(formatter, date, cday)
         end
       end
     rescue StopIteration
       raise "Not enough days for all classes"
     end
+
+    formatter.post_output(self)
 
     begin
       enum.next
