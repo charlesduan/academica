@@ -7,6 +7,10 @@ class Syllabus
 
     include Structured
 
+    def inspect
+      return "#<ClassDay #{@name.inspect}>"
+    end
+
     set_description <<~EOF
       A single class day, containing readings, assignments, and other
       information for the class.
@@ -55,6 +59,11 @@ class Syllabus
   class ClassGroup
 
     include Structured
+
+    def inspect
+      return "#<ClassDay classes=#{@classes.count}>"
+    end
+
 
     set_description <<~EOF
       A group of classes with an optional heading.

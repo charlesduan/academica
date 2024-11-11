@@ -36,6 +36,19 @@ class Syllabus
     The textbooks for the course, associated with nicknames for the books.
   EOF
 
+  element(
+    :due_dates, { Date => String }, optional: true, default: [].freeze,
+    preproc: proc { |hash|
+      hash.transform_keys { |k| k.is_a?(String) ? Date.parse(k) : k }
+    },
+    description: <<~EOF
+      The assignments for the course that are not class-dependent. The keys are
+      assignment due dates, and the values are the text describing the
+      assignment.
+    EOF
+  )
+
+
   # element(:coursepack, Coursepack, optional: true, description: <<~EOF)
   #   Information for generating a coursepack based on the readings.
   # EOF
@@ -108,44 +121,56 @@ class Syllabus
   #
   def format(formatter)
     raise "Invalid formatter" unless formatter.is_a?(Syllabus::Formatter)
-    enum = @dates.to_enum
-    formatter.pre_output(self)
 
-    begin
-
-      @classes.each do |cgroup|
-
-        # Ensure that any vacation days precede the header rather than following
-        # it.
-        date, has_class, expl = enum.peek
-        if !has_class
-          formatter.format_noclass(date, expl)
-          enum.next
-          redo
-        end
-
-        formatter.format_section(cgroup.section) if cgroup.section
-
-        cgroup.classes.each do |cday|
-          date, has_class, expl = enum.next
-          if !has_class
-            formatter.format_noclass(date, expl)
-            redo
-          end
-          format_one_class(formatter, date, cday)
-        end
+    # The elements are arrays, where the first sub-element is a group name if
+    # any and the second sub-element is a class object.
+    clist = []
+    @classes.each do |cgroup|
+      raise "Invalid class #{cgroup.class}" unless cgroup.is_a?(ClassGroup)
+      cgroup.classes.each do |cday|
+        clist.push([ cgroup, cday ])
+        cgroup = nil
       end
-    rescue StopIteration
-      raise "Not enough days for all classes"
     end
 
+    # Construct a list of items to include in the syllabus. The items are
+    # represented by a three-element array consisting of:
+    #
+    # * The item date
+    # * A priority number for sorting
+    # * A proc for what to do with the item
+    #
+    items = @due_dates.map { |date, text|
+      [ date, 2, proc { formatter.format_due_date(date, text) } ]
+    }
+
+    # Each available day adds further items to the list, drawing from the
+    # ClassDay objects in `clist`.
+    @dates.each do |date, has_class, expl|
+      if has_class
+        if clist.empty?
+          puts("Not enough classes for all days")
+          break
+        end
+        cgroup, cday = clist.shift
+        items.push([
+          date, 4, proc {
+            formatter.format_section(cgroup.section) if cgroup&.section
+            format_one_class(formatter, date, cday)
+          }
+        ])
+      else
+        items.push([ date, 1, proc { formatter.format_noclass(date, expl) } ])
+      end
+    end
+
+    warn("Too many classes and not enough days") unless clist.empty?
+
+    # Now process all the items, in sorted date and priority order.
+    formatter.pre_output(self)
+    items.sort.each { |date, priority, p| p.call }
     formatter.post_output(self)
 
-    begin
-      enum.next
-      raise "Not enough classes for all days"
-    rescue StopIteration
-    end
   end
 
   def format_one_class(formatter, date, cday)

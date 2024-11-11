@@ -130,6 +130,26 @@ class SyllabusTest < Minitest::Test
     ], f.record
   end
 
+  def test_format_due_date
+    @syl_input[:classes] = @classes_input
+    @syl_input[:due_dates] = {
+      '2024-11-14' => 'Group Project',
+      '2024-12-05' => 'Final',
+    }
+    s = Syllabus.new(@syl_input)
+    f = TestFormatter.new(verbose: false)
+    s.format(f)
+
+    assert_equal [
+      'format_class_header 2024-11-07 Group 1 Class 1',
+      'format_due_date 2024-11-14 Group Project',
+      'format_section Group 2',
+      'format_class_header 2024-11-14 Group 2 Class 1',
+      'format_class_header 2024-11-21 Group 2 Class 2',
+      'format_due_date 2024-12-05 Final',
+    ], f.record
+  end
+
 end
 
 class TestFormatter < Syllabus::Formatter
@@ -157,6 +177,9 @@ class TestFormatter < Syllabus::Formatter
   end
   def format_assignments(assignments)
     @record.push("format_assignments #{assignments.join(', ')}") if @verbose
+  end
+  def format_due_date(date, text)
+    @record.push("format_due_date #{date.iso8601} #{text}")
   end
 
 end

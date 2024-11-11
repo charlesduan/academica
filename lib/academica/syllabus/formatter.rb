@@ -77,6 +77,14 @@ class Syllabus
     end
 
     #
+    # Formats a due date.
+    #
+    def formate_due_date(date, text)
+      raise "Abstract method not implemented"
+    end
+
+
+    #
     # Formats the header line for a class. This is called immediately before all
     # the readings are formatted so it can also be used to add pre-reading
     # information.
