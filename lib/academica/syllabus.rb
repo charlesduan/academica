@@ -68,11 +68,16 @@ class Syllabus
     written to STDOUT.
   EOF
 
-  element(:outopts, { String => Hash }, optional: true, default: {}.freeze,
-          description: <<~EOF)
+  element(:format_options, { String => Hash }, optional: true,
+          default: {}.freeze, description: <<~EOF)
     A map of options for each output formatter. The keys should be identifiers
     for each formatter, and the values should be a hash of options relevant to
     the formatter.
+  EOF
+
+  element(:files, { String => String }, optional: true, default: {}.freeze,
+          description: <<~EOF)
+    Output file names for each output formatter. By default, STDOUT is used.
   EOF
 
   def pre_initialize

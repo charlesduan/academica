@@ -72,7 +72,7 @@ class Textbook
         # first in case both positions are on the same page.
         #
         if stop_page && page == stop_page && stop.is_a?(PagePos)
-          sheet = sheet[0, stop_pos]
+          sheet = sheet[0, stop.pos]
         end
         if start_page && page == start_page && start.is_a?(PagePos)
           sheet = sheet[start.pos .. -1]

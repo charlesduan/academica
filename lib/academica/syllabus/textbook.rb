@@ -91,6 +91,8 @@ class Textbook
       input_err("Either file or URL must be given") unless defined?(@url)
       input_err("Can't provide page_info with no file") if defined?(@page_info)
       input_err("Can't provide TOC with no file") if defined?(@toc)
+    else
+      @page_info ||= PageInfo.new({ start_page: 1, start_sheet: 1 }, self)
     end
 
     if defined?(@file) && !defined?(@pdf_file)

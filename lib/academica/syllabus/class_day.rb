@@ -39,7 +39,7 @@ class Syllabus
         web = true
         required = required.reject(&:no_file?)
       end
-      return required.sum(&:word_count).to_s + (web ? "+web" : "")
+      return required.sum(&:word_count).to_s + (web ? "+" : "")
     end
 
     def page_count
@@ -49,11 +49,10 @@ class Syllabus
         web = true
         required = required.reject(&:no_file?)
       end
-      return required.sum(&:page_count).to_s + (web ? "+web" : "")
+      return required.sum(&:page_count).to_s + (web ? "+" : "")
     end
 
   end
-
 
 
   class ClassGroup

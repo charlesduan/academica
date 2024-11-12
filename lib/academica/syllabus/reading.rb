@@ -35,7 +35,7 @@ class Syllabus
       A textual note describing or adding information for this reading.
     EOF
 
-    element(:tag, String, optional: true, default: "Read", description: <<~EOF)
+    element(:tag, String, optional: true, description: <<~EOF)
       An optional tag for introducing the reading (by default "Read")
     EOF
 

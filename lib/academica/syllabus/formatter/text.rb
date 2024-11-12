@@ -21,15 +21,25 @@ class Syllabus
       @outio.puts("\n#{text_date(date)}: NO CLASS -- #{expl}")
     end
 
+    def format_due_date(date, assignment)
+      @outio.puts("\n")
+      @outio.puts(line_break(
+        "#{text_date(date)}: DUE DATE -- #{assignment}",
+        prefix: "  ", first_prefix: ""
+      ))
+    end
+
     def format_reading(reading, pagetext, start_page, stop_page)
 
       text = ""
-      text << "(Optional) " if optional
-      text << "#{reading.get_book.name}, #{pagetext}"
-      text << " #{start_page}" if start_page
-      text << "-#{stop_page}" if stop_page
+      text << "(Optional) " if reading.optional
+      text << "#{reading.get_book.name}"
+      if start_page
+        text << ", #{pagetext} #{start_page}"
+        text << "-#{stop_page}" if stop_page
+      end
 
-      @outio.puts(line_break(text), prefix: '  ', first_prefix: '- ')
+      @outio.puts(line_break(text, prefix: '  ', first_prefix: '- '))
 
       return if !@verbose || reading.no_file? || !reading.get_book.toc
 

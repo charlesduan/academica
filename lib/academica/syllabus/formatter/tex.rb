@@ -38,6 +38,7 @@ class Syllabus
     # Given one or more template items, prints them to the file.
     #
     def write_from_templates(templates)
+      return unless templates
       templates = [ templates ] unless templates.is_a?(Array)
       templates.each do |t|
         if File.exist?(t)
@@ -62,22 +63,28 @@ class Syllabus
     def pre_output(syllabus)
       @syllabus = syllabus
 
-      if @options[:preamble]
-        write_from_templates(@options[:preamble])
+      @outio.puts(<<~EOF)
+        \\def\\coursename{#{escape(syllabus.name)}}
+        \\def\\coursenumber{#{escape(syllabus.number)}}
+        \\def\\courseinstructor{#{escape(syllabus.instructor)}}
+        \\def\\coursedate{#{escape(syllabus.dates.description)}}
+      EOF
+      if @options['preamble']
+        write_from_templates(@options['preamble'])
       else
-        @options[:doc_class] ||= 'article'
-        @options[:doc_opts] ||= '12pt'
         @outio.puts(<<~EOF)
-        \\documentclass[#{@options[:doc_opts]}]{#{@options[:doc_class]}}
-        \\title{#{escape(syllabus.number)} \\\\ #{escape(syllabus.name)}}
-        \\author{#{escape(syllabus.instructor)}}
-        \\date{#{escape(syllabus.dates.description)} \\\\ Last updated \\today}
+        \\documentclass[12pt]{article}
+        \\usepackage{syllabus}
+
+        \\title{\\coursename \\\\ (\\coursenumber)}
+        \\author{\\courseinstructor}
+        \\date{\\coursedate \\\\ Last updated \\today}
 
         EOF
 
       end
       @outio.puts("\\begin{document}\n\n\\maketitle\n\n")
-      write_from_templates(@options[:before])
+      write_from_templates(@options['before'])
     end
 
 
@@ -89,9 +96,9 @@ class Syllabus
       days = text_join(@syllabus.dates.days, amp: " \\& ", commaamp: " \\& ")
 
       return <<~EOF
-        Meetings: \\& #{days}, #{@syllabus.time} \\\\
-        Location: \\& #{@syllabus.location} \\\\
-        Credits:  \\& #{@syllabus.credits} \\\\
+        Meetings: & #{days}, #{@syllabus.time} \\\\
+        Location: & #{@syllabus.location} \\\\
+        Credits:  & #{@syllabus.credits} \\\\
       EOF
     end
 
@@ -127,6 +134,10 @@ class Syllabus
       @outio.puts "\n\\subsection{#{escape(section)}}\n\n"
     end
 
+    def format_due_date(date, expl)
+      @outio.puts "\n\\DueDate{#{text_date(date)}} #{escape(expl)}"
+    end
+
     def format_reading(reading, pagetext, start_page, stop_page)
       if reading.tag
         res = "\\SyllabusHeading{#{escape(reading.tag)}}"
@@ -160,7 +171,7 @@ class Syllabus
     end
 
     def post_output(syllabus)
-      write_from_templates(@options[:after])
+      write_from_templates(@options['after'])
       @outio.puts("\n\\end{document}")
     end
 

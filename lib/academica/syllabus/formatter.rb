@@ -79,7 +79,7 @@ class Syllabus
     #
     # Formats a due date.
     #
-    def formate_due_date(date, text)
+    def format_due_date(date, text)
       raise "Abstract method not implemented"
     end
 
@@ -141,8 +141,8 @@ class Syllabus
   end
 end
 
-require_relative 'formatter/text'
-require_relative 'formatter/tex'
+require 'academica/syllabus/formatter/text'
+require 'academica/syllabus/formatter/tex'
 #require_relative 'formatter/html'
 #require_relative 'formatter/ical'
 #require_relative 'formatter/slides'

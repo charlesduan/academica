@@ -75,14 +75,14 @@ class ClassDayTest < Minitest::Test
   def test_class_group_no_classes
     @class_group_input.delete(:classes)
     assert_raises(Structured::InputError) {
-      cg = Syllabus::ClassGroup.new(@class_group_input)
+      Syllabus::ClassGroup.new(@class_group_input)
     }
   end
 
   def test_class_group_empty_classes
     @class_group_input[:classes] = []
     assert_raises(Structured::InputError) {
-      cg = Syllabus::ClassGroup.new(@class_group_input)
+      Syllabus::ClassGroup.new(@class_group_input)
     }
   end
 
