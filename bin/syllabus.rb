@@ -93,13 +93,22 @@ class SyllabusDispatcher < Dispatcher
     run_formatter(Syllabus::TextFormatter, "text")
   end
 
-  def help_text
+  def help_tex
     return <<~EOF
       Prints a LaTeX version of the syllabus.
     EOF
   end
   def cmd_tex
     run_formatter(Syllabus::TexFormatter, "tex")
+  end
+
+  def help_html
+    return <<~EOF
+      Prints an HTML version of the syllabus.
+    EOF
+  end
+  def cmd_html
+    run_formatter(Syllabus::HtmlFormatter, "html")
   end
 
 #  def help_ical

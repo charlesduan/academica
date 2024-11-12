@@ -142,8 +142,8 @@ class SyllabusTest < Minitest::Test
 
     assert_equal [
       'format_class_header 2024-11-07 Group 1 Class 1',
-      'format_due_date 2024-11-14 Group Project',
       'format_section Group 2',
+      'format_due_date 2024-11-14 Group Project',
       'format_class_header 2024-11-14 Group 2 Class 1',
       'format_class_header 2024-11-21 Group 2 Class 2',
       'format_due_date 2024-12-05 Final',

@@ -103,4 +103,10 @@ class FormatterTest < Minitest::Test
     })
   end
 
+  def test_tex_formatter
+    formatter_battery(Syllabus::HtmlFormatter, {}, {
+      :counts => :none,
+    })
+  end
+
 end

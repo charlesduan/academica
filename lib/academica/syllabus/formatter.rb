@@ -143,6 +143,6 @@ end
 
 require 'academica/syllabus/formatter/text'
 require 'academica/syllabus/formatter/tex'
-#require_relative 'formatter/html'
+require 'academica/syllabus/formatter/html'
 #require_relative 'formatter/ical'
 #require_relative 'formatter/slides'

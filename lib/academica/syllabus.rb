@@ -146,7 +146,7 @@ class Syllabus
     # * A proc for what to do with the item
     #
     items = @due_dates.map { |date, text|
-      [ date, 2, proc { formatter.format_due_date(date, text) } ]
+      [ date, 3, proc { formatter.format_due_date(date, text) } ]
     }
 
     # Each available day adds further items to the list, drawing from the
@@ -159,10 +159,11 @@ class Syllabus
         end
         cgroup, cday = clist.shift
         items.push([
-          date, 4, proc {
-            formatter.format_section(cgroup.section) if cgroup&.section
-            format_one_class(formatter, date, cday)
-          }
+          date, 2, proc { formatter.format_section(cgroup.section) }
+        ]) if cgroup&.section
+
+        items.push([
+          date, 4, proc { format_one_class(formatter, date, cday) }
         ])
       else
         items.push([ date, 1, proc { formatter.format_noclass(date, expl) } ])
