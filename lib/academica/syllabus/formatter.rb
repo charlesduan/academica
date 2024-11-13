@@ -144,5 +144,5 @@ end
 require 'academica/syllabus/formatter/text'
 require 'academica/syllabus/formatter/tex'
 require 'academica/syllabus/formatter/html'
-#require_relative 'formatter/ical'
+require 'academica/syllabus/formatter/ical'
 #require_relative 'formatter/slides'

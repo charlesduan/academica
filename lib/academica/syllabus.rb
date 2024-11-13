@@ -11,6 +11,8 @@ class Syllabus
   include Enumerable
   include Structured
 
+  TIME_RE = /\A(1?\d:\d\d)-(1?\d:\d\d) ([AP]M)\z/
+
   set_description <<~EOF
     Represents the materials for a course being taught in an academic semester.
     The Syllabus object contains the dates of the academic calendar, the
@@ -27,9 +29,7 @@ class Syllabus
   element(:credits, String, optional: true, default: "TBD",
           description: "Number of credits for this course")
   element(:time, String, optional: true, default: "TBD",
-          check: proc { |s|
-            s == "TBD" || s =~ /\A1?\d:\d\d-1?\d:\d\d [AP]M\z/
-          },
+          check: proc { |s| s == "TBD" || s =~ TIME_RE },
           description: "The time range for class meetings")
 
   element(:books, { String => Textbook }, description: <<~EOF)
@@ -106,6 +106,15 @@ class Syllabus
 
   def fqn
     "#@number: #@name"
+  end
+
+  #
+  # Returns a two-element array of strings representing the start and end time
+  # of the course.
+  #
+  def time_range
+    m = TIME_RE.match(@time)
+    return [ "#{m[1]} #{m[3]}", "#{m[2]} #{m[3]}" ]
   end
 
   #

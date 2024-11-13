@@ -33,15 +33,17 @@ class SyllabusDispatcher < Dispatcher
 
   def run_formatter(fmt_class, tag)
     tag = tag.to_s
-    out_io = @output || syllabus.files[tag]
-    if out_io
-      out_io = open(out_io, "w")
+    out_file = @output || syllabus.files[tag]
+    if out_file
+      open(out_file, "w") do |io|
+        formatter = fmt_class.new(io, syllabus.format_options[tag] || {})
+        syllabus.format(formatter)
+        puts("Wrote #{out_file}")
+      end
     else
-      out_io = STDOUT
+      formatter = fmt_class.new(STDOUT, syllabus.format_options[tag] || {})
+      syllabus.format(formatter)
     end
-    formatter = fmt_class.new(out_io, syllabus.format_options[tag] || {})
-    syllabus.format(formatter)
-    out_io.close
   end
 
 
@@ -109,6 +111,18 @@ class SyllabusDispatcher < Dispatcher
   end
   def cmd_html
     run_formatter(Syllabus::HtmlFormatter, "html")
+  end
+
+  def help_ical
+    return <<~EOF
+      Generates an iCal format calendar based on the syllabus.
+    EOF
+  end
+  def cmd_ical
+    if syllabus.time == 'TBD'
+      raise "Cannot generate iCal file without class time"
+    end
+    run_formatter(Syllabus::IcalFormatter, "ical")
   end
 
 #  def help_ical
