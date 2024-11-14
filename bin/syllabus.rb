@@ -167,6 +167,15 @@ class SyllabusDispatcher < Dispatcher
     format(Syllabus::IcalFormatter, "ical")
   end
 
+  def help_json
+    return <<~EOF
+      Generates a JSON file for the attendance program based on the syllabus.
+    EOF
+  end
+  def cmd_json
+    format(Syllabus::JsonFormatter, "json")
+  end
+
   def help_slides
     return <<~EOF
       Generates a presentation slide template for a given class day.
@@ -176,83 +185,6 @@ class SyllabusDispatcher < Dispatcher
     format(Syllabus::SlidesFormatter, "slides", arg)
   end
 
-#  def help_search
-#    return <<~EOF
-#      Searches for text in the default textbook.
-#
-#      The two arguments are the start text of the reading and the end text of
-#      the reading. The command produces statistics about the text in between.
-#    EOF
-#  end
-#
-#  def cmd_search(start_query, stop_query)
-#    reading = @course.default_textbook.reading({
-#      start: start_query, stop: stop_query
-#    })
-#
-#    puts "Pages #{reading.page_range}"
-#    puts "#{reading.page_count} pages, #{reading.word_count} words"
-#    reading.each_entry do |entry, page|
-#      puts "  #{entry}"
-#    end
-#  end
-#
-#  def help_coursepack
-#    return <<~EOF
-#      Constructs a coursepack based on the supplemental readings.
-#
-#      The classes are consulted for the books used and their order. Books are
-#      included based on the 'coursepack' parameter, which should be set to true
-#      or false. If the parameter is unset, then every book other than the
-#      default textbook is included in the coursepack.
-#    EOF
-#  end
-#
-#  def cmd_coursepack
-#
-#    @course.read_classes
-#    cp = @course.initialize_coursepack
-#    raise "No coursepack metadata given" unless cp
-#    @course.each do |date, cl|
-#      next unless cl.is_a?(Course::OneClass)
-#      cl.readings.each do |reading|
-#        cp.add_reading(reading)
-#      end
-#    end
-#    cp.generate
-#
-#  end
-#
-#  def help_slides
-#    return <<~EOF
-#      Generates a template slide deck for a given class.
-#
-#      The class number should be provided as an argument.
-#    EOF
-#  end
-#
-#  def cmd_slides(classnum)
-#    classnum = classnum.to_i
-#    @course.read_classes
-#    cp = @course.coursepack
-#
-#    @course.each do |date, cl|
-#      next unless cl.is_a?(Course::OneClass) and cl.sequence == classnum
-#      filename = @course.info('slide_file') % [ cl.sequence ]
-#      if File.exist?(filename)
-#        raise "File #{filename} already exists; not overwriting"
-#      end
-#
-#      open(filename, 'w') do |io|
-#        SlideFormatter.new(io, @course).class_deck(date, cl)
-#      end
-#      puts("Wrote #{filename}")
-#      return
-#    end
-#
-#    raise "Class number #{classnum} not found"
-#  end
-#
 end
 
 sd = SyllabusDispatcher.new('courseinfo.yaml')

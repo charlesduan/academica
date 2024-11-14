@@ -26,7 +26,7 @@ class FormatterTest < Minitest::Test
   )
 
     setup_syllabus_inputs
-    @syllabus = Syllabus.new(@syl_input.update(:books => @book_input))
+    @syllabus ||= Syllabus.new(@syl_input.update(:books => @book_input))
 
 
     @io = StringIO.new
@@ -127,7 +127,19 @@ class FormatterTest < Minitest::Test
   end
 
   def test_ical_formatter
-    formatter_battery(TestFormatter, {}, { :default => :none })
+    setup_syllabus_inputs
+    @syllabus ||= Syllabus.new(@syl_input.update(
+      :books => @book_input,
+      :time => '10:00-11:00 AM',
+    ))
+
+    formatter_battery(Syllabus::IcalFormatter, {
+      'timezone' => 'America/New York',
+    }, { :default => :none })
+  end
+
+  def test_json_formatter
+    formatter_battery(Syllabus::JsonFormatter, {}, { :default => :none })
   end
 
   def test_slide_formatter

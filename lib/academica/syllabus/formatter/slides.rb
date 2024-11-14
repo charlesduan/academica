@@ -5,8 +5,6 @@
 class Syllabus
   class SlidesFormatter < Formatter
 
-    include TextTools
-
     #
     # Given a string of text, formats it for TeX output.
     #

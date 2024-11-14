@@ -134,6 +134,7 @@ class Syllabus
   # of the course.
   #
   def time_range
+    raise "Syllabus does not specify class meeting times" if @time == 'TBD'
     m = TIME_RE.match(@time)
     return [ "#{m[1]} #{m[3]}", "#{m[2]} #{m[3]}" ]
   end
