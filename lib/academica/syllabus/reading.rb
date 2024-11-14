@@ -368,6 +368,7 @@ class Syllabus
     # Yields for each TOC entry in this reading.
     #
     def each_entry
+      return unless get_book.toc
       get_book.toc.each(start: range_start, stop: range_end) do |entry|
         yield(entry)
       end

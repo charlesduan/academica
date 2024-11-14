@@ -8,7 +8,7 @@ class FormatterUtilTest < Minitest::Test
   include TestHelper
 
   def setup
-    @f = Syllabus::Formatter.new
+    @f = Syllabus::Formatter.new(nil)
     @d = Date.new(2024, 11, 14)
   end
 

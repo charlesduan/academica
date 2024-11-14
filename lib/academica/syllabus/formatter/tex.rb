@@ -61,14 +61,12 @@ class Syllabus
     end
 
 
-    def pre_output(syllabus)
-      @syllabus = syllabus
-
+    def pre_output
       @outio.puts(<<~EOF)
-        \\def\\coursename{#{escape(syllabus.name)}}
-        \\def\\coursenumber{#{escape(syllabus.number)}}
-        \\def\\courseinstructor{#{escape(syllabus.instructor)}}
-        \\def\\coursedate{#{escape(syllabus.dates.description)}}
+        \\def\\coursename{#{escape(@syllabus.name)}}
+        \\def\\coursenumber{#{escape(@syllabus.number)}}
+        \\def\\courseinstructor{#{escape(@syllabus.instructor)}}
+        \\def\\coursedate{#{escape(@syllabus.dates.description)}}
       EOF
       if @options['preamble']
         write_from_templates(@options['preamble'])
@@ -172,7 +170,7 @@ class Syllabus
     def format_counts(pages, words)
     end
 
-    def post_output(syllabus)
+    def post_output
       write_from_templates(@options['after'])
       @outio.puts("\n\\end{document}")
     end

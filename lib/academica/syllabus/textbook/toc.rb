@@ -82,6 +82,14 @@ class Textbook
           parse_line(line)
         end
       end
+
+      # An unnumbered entry at the end of the TOC is probably cruft
+      unless @entries.last.page
+        warn("Unexpected text in TOC: `#{@entries.last.text}'")
+        @entries.pop
+        @entries.last.next_entry = nil
+      end
+
       return @entries
     end
 
@@ -116,9 +124,9 @@ class Textbook
 
       # If there is a page number, then pull it off and update the entry.
       # Otherwise, the entire text is for the entry.
-      if line =~ @page_re
-        @entries.last.add_text($`)
-        @entries.last.page = $1
+      if (m = @page_re.match(line))
+        @entries.last.add_text(m.pre_match)
+        @entries.last.page = m[1]
       else
         @entries.last.add_text(line)
       end
@@ -329,7 +337,7 @@ class Textbook
 
       def to_s
         "#{'  ' * @level}#{@number}#{@number ? '.' : '-'} " + \
-          "#{@text} -- #@page_pos"
+          "#{@text} -- #{@page && page_pos}"
       end
 
       def print

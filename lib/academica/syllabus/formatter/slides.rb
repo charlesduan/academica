@@ -2,107 +2,111 @@
 # Formatter for producing slides.
 #
 
-class SlideFormatter
+class Syllabus
+  class SlidesFormatter < Formatter
 
-  def initialize(io, course)
-    @io = io
-    @course = course
-  end
+    include TextTools
 
-  def write(text)
-    @io.puts(text)
-  end
-
-  def class_deck(date, one_class)
-    write <<~EOF
-      \\documentclass[12pt]{beamer}
-      \\usepackage{cdslides}
-      \\GraphicPrefix{../images}
-
-      \\title{#{escape(one_class.name)}}
-      \\author{#{@course.info(:instructor)} \\\\ #{@course.fqn}}
-      \\date{#{date.strftime("%B %-d, %Y")} (Class #{one_class.sequence})}
-
-      \\begin{document}
-
-      \\begin{frame}
-      \\maketitle
-      \\framenote{
-      Class #{one_class.sequence}
-      }
-      \\end{frame}
+    #
+    # Given a string of text, formats it for TeX output.
+    #
+    def escape(text)
+      return markdown(
+        text.gsub(/[&_^%$]/) { |x| "\\#{x}" },
+        i: %w(\emph{ }), b: %w(\textbf{ })
+      ) 
+    end 
 
 
-    EOF
-
-    one_class.readings.each do |reading|
-      write_reading(reading)
+    def format_section(section)
     end
 
-    one_class.assignments.each do |assignment|
-      write_assignment(assignment)
+    def format_noclass(date_range)
     end
 
-    write("\\end{document}\n\n")
-  end
+    def format_due_date(date, expl)
+    end
 
-  def write_reading(reading)
+    def format_class_header(date, class_day)
+      @outio.puts(line_break(<<~EOF, preserve_lines: true))
+        \\documentclass[12pt]{beamer}
+        \\usepackage{cdslides}
+        \\GraphicPrefix{../images}
 
-    write <<~EOF
-      %
-      % #{escape(reading.book.fullname)}
-      % Pages #{reading.start_page} to #{reading.stop_page}
-      % #{reading.optional ? "Optional" : "Required"}
-      %
+        \\title{#{escape(class_day.name)}}
+        \\author{#{@syllabus.instructor} \\\\ #{@syllabus.fqn}}
+        \\date{#{date.strftime("%B %-d, %Y")} (Class #{class_day.sequence})}
 
-    EOF
+        \\begin{document}
 
-    reading.each_entry do |entry|
-      text = escape(entry.text)
-      text = case text
-             when / v\. / then "\\emph{#{text}}"
-             when /^In re / then "\\emph{#{text}}"
-             else text
-             end
-      write <<~EOF
-        %
-        % Page #{entry.page}
-        %
-        \\begin{frame}{#{text}}
-
-
+        \\begin{frame}
+        \\maketitle
         \\framenote{
+        Class #{class_day.sequence}
         }
         \\end{frame}
 
+      EOF
+    end
+
+    def format_reading(reading, pagetext, start_page, stop_page)
+
+      @outio.puts <<~EOF
+
+        %
+        #{line_break(book_for(reading), prefix: "% ")}
+        % Pages #{start_page} to #{stop_page}
+        % #{reading.optional ? "Optional" : "Required"}
+        %
 
       EOF
 
+      reading.each_entry do |entry|
+        text = escape(entry.text)
+        text = case text
+               when / v\. / then "\\emph{#{text}}"
+               when /^In re / then "\\emph{#{text}}"
+               else text
+               end
+        @outio.puts <<~EOF
+          %
+          % Page #{entry.page}
+          %
+          \\begin{frame}{#{text}}
+
+          \\framenote{
+          }
+          \\end{frame}
+
+
+        EOF
+
+      end
     end
+
+    def format_assignments(assignments)
+      assignments.each do |assignment|
+        @outio.puts <<~EOF
+          %
+          % Assignment:
+          % #{escape(assignment)}
+          %
+          \\begin{frame}
+
+          \\framenote{
+          }
+          \\end{frame}
+
+
+        EOF
+      end
+    end
+
+    def format_counts(pages, words)
+      @outio.puts("\n\\end{document}")
+    end
+
+
   end
-
-  def write_assignment(assignment)
-
-    write <<~EOF
-      %
-      % Assignment:
-      % #{escape(assignment)}
-      %
-      \\begin{frame}
-
-
-      \\framenote{
-      }
-      \\end{frame}
-
-
-
-    EOF
-  end
-
-  def escape(text)
-    return text.gsub("&", "\\\\&")
-  end
-
 end
 

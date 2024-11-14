@@ -30,7 +30,7 @@ class FormatterTest < Minitest::Test
 
 
     @io = StringIO.new
-    @formatter = formatter_class.new(@io, options)
+    @formatter = formatter_class.new(@syllabus, @io, options)
 
     # Just make sure these all work and don't produce errors
     assert_match(/book/, @formatter.format_book_name("book", "url", true))
@@ -42,11 +42,11 @@ class FormatterTest < Minitest::Test
 
     # Just test that these raise nothing
     @io.truncate(0); @io.pos = 0
-    @formatter.pre_output(@syllabus)
+    @formatter.pre_output
     formatter_check(@io.string, expectations, :pre_output, :none)
 
     @io.truncate(0); @io.pos = 0
-    @formatter.post_output(@syllabus)
+    @formatter.post_output
     formatter_check(@io.string, expectations, :post_output, :none)
 
     @io.truncate(0); @io.pos = 0
@@ -106,6 +106,10 @@ class FormatterTest < Minitest::Test
     end
   end
 
+  def test_test_formatter
+    formatter_battery(TestFormatter, { verbose: true }, { :default => :none })
+  end
+
   def test_text_formatter
     formatter_battery(Syllabus::TextFormatter)
   end
@@ -119,6 +123,19 @@ class FormatterTest < Minitest::Test
   def test_html_formatter
     formatter_battery(Syllabus::HtmlFormatter, {}, {
       :counts => :none,
+    })
+  end
+
+  def test_ical_formatter
+    formatter_battery(TestFormatter, {}, { :default => :none })
+  end
+
+  def test_slide_formatter
+    formatter_battery(Syllabus::SlidesFormatter, {}, {
+      default: :none,
+      class_header: :default,
+      reading: :default,
+      assignment: :default,
     })
   end
 

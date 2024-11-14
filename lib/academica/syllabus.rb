@@ -168,6 +168,13 @@ class Syllabus
     # * A priority number for sorting
     # * A proc for what to do with the item
     #
+    # The four types of items in the syllabus are:
+    #
+    # * Due dates
+    # * Class days
+    # * Class group headings
+    # * Holidays
+    #
     items = @due_dates.map { |date, text|
       [ date, 3, proc { formatter.format_due_date(date, text) } ]
     }
@@ -189,12 +196,15 @@ class Syllabus
     end
 
     # Now process all the items, in sorted date and priority order.
-    formatter.pre_output(self)
+    formatter.pre_output
     items.sort.each { |date, priority, p| p.call }
-    formatter.post_output(self)
+    formatter.post_output
 
   end
 
+  #
+  # Formats a single class.
+  #
   def format_one_class(formatter, cday)
     formatter.format_class_header(cday.date, cday)
     cday.readings.each do |reading|
@@ -209,6 +219,13 @@ class Syllabus
     end
 
     formatter.format_counts(cday.page_count, cday.word_count)
+  end
+
+  #
+  # Finds a single class given a day or sequence number.
+  #
+  def find_class(date_or_seq)
+    find { |cday| cday.sequence == date_or_seq or cday.date == date_or_seq }
   end
 
 

@@ -86,6 +86,24 @@ class SyllabusTest < Minitest::Test
     assert_equal "Group 2 Class 2", s.classes[1].classes[1].name
   end
 
+  def test_find_class
+    @syl_input[:classes] = @classes_input
+    s = Syllabus.new(@syl_input)
+    assert_equal "Group 1 Class 1", s.find_class(1).name
+    assert_equal "Group 1 Class 1", s.find_class(Date.new(2024, 11, 7)).name
+    assert_equal "Group 2 Class 1", s.find_class(2).name
+    assert_equal "Group 2 Class 1", s.find_class(Date.new(2024, 11, 14)).name
+    assert_equal "Group 2 Class 2", s.find_class(3).name
+    assert_equal "Group 2 Class 2", s.find_class(Date.new(2024, 11, 21)).name
+  end
+
+  def test_find_class_nil
+    @syl_input[:classes] = @classes_input
+    s = Syllabus.new(@syl_input)
+    assert_nil s.find_class(4)
+    assert_nil s.find_class(Date.new(2024, 11, 20))
+  end
+
   def test_class_sequence_nums
     @syl_input[:classes] = @classes_input
     s = Syllabus.new(@syl_input)
@@ -99,7 +117,7 @@ class SyllabusTest < Minitest::Test
     @syl_input[:classes] = @classes_input
     s = Syllabus.new(@syl_input)
 
-    f = TestFormatter.new
+    f = TestFormatter.new(s, STDOUT, { verbose: true })
     s.format(f)
     assert_equal [
       'format_class_header 2024-11-07 Group 1 Class 1',
@@ -118,7 +136,7 @@ class SyllabusTest < Minitest::Test
     @syl_input[:classes] = @classes_input
     @syl_input[:dates] = @vacation_input
     s = Syllabus.new(@syl_input)
-    f = TestFormatter.new(verbose: false)
+    f = TestFormatter.new(s, STDOUT, { verbose: false })
     s.format(f)
 
     assert_equal [
@@ -137,7 +155,7 @@ class SyllabusTest < Minitest::Test
       '2024-12-05' => 'Final',
     }
     s = Syllabus.new(@syl_input)
-    f = TestFormatter.new(verbose: false)
+    f = TestFormatter.new(s, STDOUT, { verbose: false })
     s.format(f)
 
     assert_equal [
@@ -152,36 +170,3 @@ class SyllabusTest < Minitest::Test
 
 end
 
-class TestFormatter < Syllabus::Formatter
-  def initialize(verbose: true)
-    @record = []
-    @verbose = verbose
-  end
-  attr_reader :record
-
-  def format_reading(reading, pagetext, start_page, stop_page)
-    # TODO: when we implement reading tests
-    @record.push("format_reading") if @verbose
-  end
-  def format_section(section)
-    @record.push("format_section #{section}")
-  end
-  def format_counts(pages, words)
-    @record.push("format_counts #{pages} #{words}") if @verbose
-  end
-  def format_class_header(date, one_class)
-    @record.push("format_class_header #{date.iso8601} #{one_class.name}")
-  end
-  def format_noclass(date_range)
-    @record.push(
-      "format_noclass #{date_range.start.iso8601} #{date_range.explanation}"
-    )
-  end
-  def format_assignments(assignments)
-    @record.push("format_assignments #{assignments.join(', ')}") if @verbose
-  end
-  def format_due_date(date, text)
-    @record.push("format_due_date #{date.iso8601} #{text}")
-  end
-
-end

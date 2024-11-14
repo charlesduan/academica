@@ -4,6 +4,7 @@
 require 'cli-dispatcher'
 require 'yaml'
 require 'optparse'
+require 'date'
 
 require 'academica/syllabus'
 
@@ -31,19 +32,54 @@ class SyllabusDispatcher < Dispatcher
     return @syllabus = Syllabus.new(YAML.load_file(@file))
   end
 
-  def run_formatter(fmt_class, tag)
-    tag = tag.to_s
-    out_file = @output || syllabus.files[tag]
-    if out_file
-      open(out_file, "w") do |io|
-        formatter = fmt_class.new(io, syllabus.format_options[tag] || {})
-        syllabus.format(formatter)
-        puts("Wrote #{out_file}")
-      end
-    else
-      formatter = fmt_class.new(STDOUT, syllabus.format_options[tag] || {})
-      syllabus.format(formatter)
+  def format(fmt_class, tag, arg = nil)
+    tag, cday = tag.to_s, nil
+    if arg
+      arg = Date.parse(arg) rescue arg.to_i
+      cday = syllabus.find_class(arg)
+      raise "No class #{arg} found" unless cday
     end
+
+    open_file_or_stdout(tag, cday) do |io, filename|
+      opts = syllabus.format_options[tag] || {}
+      formatter = fmt_class.new(syllabus, io, opts)
+      if cday
+        syllabus.format_one_class(formatter, cday)
+      else
+        syllabus.format(formatter)
+      end
+      warn("Wrote #{filename}") if filename
+    end
+  end
+
+  #
+  # Determines what file to write the syllabus to. If cday is given, then only a
+  # single day will be written rather than the whole syllabus. The rules are as
+  # follows:
+  #
+  # * A filename may be given in the @output variable or in the syllabus files
+  #   section.
+  # * If no filename is given, STDOUT is used.
+  # * If a class day is given, then the filename should contain a % symbol. It
+  #   will be treated like a printf format string, and given the class's
+  #   sequence number.
+  # * If a class day is given but the filename has no % symbol, then the
+  #   filename is ignored and STDOUT is used.
+  #
+  def open_file_or_stdout(tag, cday = nil)
+    filename = (@output || syllabus.files[tag])
+    return yield(STDOUT, nil) unless filename
+
+    if filename.include?("%")
+      raise "Must give a class day for #{tag} output" unless cday
+      filename = sprintf(filename, cday.sequence)
+      raise "Refusing to overwrite #{filename}" if File.exist?(filename)
+    elsif cday
+      # A single day will not be written to a full syllabus file
+      return yield(STDOUT, nil)
+    end
+
+    return open(filename, 'w') do |io| yield(io, filename) end
   end
 
 
@@ -89,28 +125,34 @@ class SyllabusDispatcher < Dispatcher
   def help_text
     return <<~EOF
       Prints a text version of the syllabus.
+
+      The argument is a class sequence number or date.
     EOF
   end
-  def cmd_text
-    run_formatter(Syllabus::TextFormatter, "text")
+  def cmd_text(arg = nil)
+    format(Syllabus::TextFormatter, "text", arg)
   end
 
   def help_tex
     return <<~EOF
       Prints a LaTeX version of the syllabus.
+
+      The argument is a class sequence number or date.
     EOF
   end
-  def cmd_tex
-    run_formatter(Syllabus::TexFormatter, "tex")
+  def cmd_tex(arg = nil)
+    format(Syllabus::TexFormatter, "tex", arg)
   end
 
   def help_html
     return <<~EOF
       Prints an HTML version of the syllabus.
+
+      The argument is a class sequence number or date.
     EOF
   end
-  def cmd_html
-    run_formatter(Syllabus::HtmlFormatter, "html")
+  def cmd_html(arg = nil)
+    format(Syllabus::HtmlFormatter, "html", arg)
   end
 
   def help_ical
@@ -122,63 +164,18 @@ class SyllabusDispatcher < Dispatcher
     if syllabus.time == 'TBD'
       raise "Cannot generate iCal file without class time"
     end
-    run_formatter(Syllabus::IcalFormatter, "ical")
+    format(Syllabus::IcalFormatter, "ical")
   end
 
-#  def help_ical
-#    return <<~EOF
-#      Generates an iCal format calendar for the class.
-#    EOF
-#  end
-#
-#  def cmd_ical
-#    @course.read_classes
-#    cp = @course.coursepack
-#    formatter = IcalFormatter.new(@course)
-#    @course.each do |date, cl|
-#      next unless cl.is_a?(Course::OneClass)
-#      formatter.format_class(date, cl) do |reading|
-#        cp ? cp.page_description(reading) : reading.page_description
-#      end
-#    end
-#    open(@course.info('ical_file'), 'w') do |io|
-#      io.write(formatter.calendar.to_ical)
-#    end
-#  end
-#
-#  def help_syllabus
-#    return <<~EOF
-#      Parses the course reading list and produces a syllabus.
-#
-#      The output is statistics and information on each day of the course.
-#    EOF
-#  end
-#
-#  def cmd_syllabus(range = nil)
-#    case range
-#    when nil then page_range = (1 ..)
-#    when /-/ then page_range = ($`.to_i .. $'.to_i)
-#    else          page_range = (range.to_i..range.to_i)
-#    end
-#    @course.read_classes
-#    cp = @course.coursepack
-#
-#    @course.each do |date, cl|
-#      case cl
-#      when Course::OneClass
-#
-#        next unless page_range.include?(cl.sequence)
-#
-#        @formatter.format_class(date, cl) do |reading|
-#          cp ? cp.page_description(reading) : reading.page_description
-#        end
-#      else
-#        next unless page_range == (1..)
-#        @formatter.format_noclass(date, cl)
-#      end
-#    end
-#  end
-#
+  def help_slides
+    return <<~EOF
+      Generates a presentation slide template for a given class day.
+    EOF
+  end
+  def cmd_slides(arg)
+    format(Syllabus::SlidesFormatter, "slides", arg)
+  end
+
 #  def help_search
 #    return <<~EOF
 #      Searches for text in the default textbook.

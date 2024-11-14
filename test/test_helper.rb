@@ -2,6 +2,8 @@ $LOAD_PATH.unshift(File.expand_path('../../lib', __FILE__))
 
 require 'minitest/autorun'
 
+require 'academica/syllabus'
+
 module TestHelper
   def setup_syllabus_inputs
     @syl_input = {
@@ -101,3 +103,38 @@ module TestHelper
 
 end
 
+
+
+class TestFormatter < Syllabus::Formatter
+  def post_initialize
+    @record = []
+    @verbose = @options[:verbose]
+  end
+  attr_reader :record
+
+  def format_reading(reading, pagetext, start_page, stop_page)
+    # TODO: when we implement reading tests
+    @record.push("format_reading") if @verbose
+  end
+  def format_section(section)
+    @record.push("format_section #{section}")
+  end
+  def format_counts(pages, words)
+    @record.push("format_counts #{pages} #{words}") if @verbose
+  end
+  def format_class_header(date, one_class)
+    @record.push("format_class_header #{date.iso8601} #{one_class.name}")
+  end
+  def format_noclass(date_range)
+    @record.push(
+      "format_noclass #{date_range.start.iso8601} #{date_range.explanation}"
+    )
+  end
+  def format_assignments(assignments)
+    @record.push("format_assignments #{assignments.join(', ')}") if @verbose
+  end
+  def format_due_date(date, text)
+    @record.push("format_due_date #{date.iso8601} #{text}")
+  end
+
+end

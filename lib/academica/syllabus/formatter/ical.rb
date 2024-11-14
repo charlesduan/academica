@@ -8,13 +8,13 @@ class Syllabus
 
     include TextTools
 
-    def pre_output(syllabus)
+    def pre_output
       @calendar = Icalendar::Calendar.new
-      @calendar.append_custom_property("X-WR-CALNAME", syllabus.name)
+      @calendar.append_custom_property("X-WR-CALNAME", @syllabus.name)
       @calendar.publish
 
-      @start_time, @stop_time = syllabus.time_range
-      @suffix = "[#{syllabus.number}]"
+      @start_time, @stop_time = @syllabus.time_range
+      @suffix = "[#{@syllabus.number}]"
 
       @tzid = @options['timezone']
       unless @tzid
@@ -23,7 +23,7 @@ class Syllabus
       end
     end
 
-    def post_output(syllabus)
+    def post_output
       @outio.write(@calendar.to_ical)
     end
 

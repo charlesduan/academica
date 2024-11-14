@@ -17,7 +17,8 @@ class Syllabus
     #
     # Sets up the output stream as @outio, and the options as @options
     #
-    def initialize(outio = STDOUT, options = {})
+    def initialize(syllabus, outio = STDOUT, options = {})
+      @syllabus = syllabus
       @outio = outio
       @options = options
       post_initialize
@@ -67,22 +68,17 @@ class Syllabus
     # :section: Methods to be Implemented
     #
 
-    # Formats a single reading.
-    def format_reading(reading, pagetext, start_page, stop_page)
-      raise "Abstract method not implemented"
-    end
-
+    #
     # Formats a section heading.
+    #
     def format_section(section)
       raise "Abstract method not implemented"
     end
 
     #
-    # Formats the page and word counts. This is called immediately after all the
-    # readings are formatted so it can also be used to add post-reading
-    # information.
+    # Formats the header line for a non-class day.
     #
-    def format_counts(pages, words)
+    def format_noclass(date_range)
       raise "Abstract method not implemented"
     end
 
@@ -93,25 +89,38 @@ class Syllabus
       raise "Abstract method not implemented"
     end
 
-
     #
     # Formats the header line for a class. This is called immediately before all
     # the readings are formatted so it can also be used to add pre-reading
     # information.
     #
-    def format_class_header(date, one_class)
+    def format_class_header(date, class_day)
       raise "Abstract method not implemented"
     end
 
-    # Formats the header line for a non-class day.
-    def format_noclass(date_range)
+    #
+    # Formats a single reading.
+    #
+    def format_reading(reading, pagetext, start_page, stop_page)
       raise "Abstract method not implemented"
     end
 
+    #
     # Formats any assignments for a class.
+    #
     def format_assignments(assignments)
       raise "Abstract method not implemented"
     end
+
+    #
+    # Formats the page and word counts. This is called immediately after all the
+    # readings and assignments are formatted so it can also be used to add
+    # post-reading information.
+    #
+    def format_counts(pages, words)
+      raise "Abstract method not implemented"
+    end
+
 
 
 
@@ -138,13 +147,13 @@ class Syllabus
     #
     # Override this method to perform pre-output routines.
     #
-    def pre_output(syllabus)
+    def pre_output
     end
 
     #
     # Override this method to perform post-output routines.
     #
-    def post_output(syllabus)
+    def post_output
     end
 
 
@@ -155,4 +164,4 @@ require 'academica/syllabus/formatter/text'
 require 'academica/syllabus/formatter/tex'
 require 'academica/syllabus/formatter/html'
 require 'academica/syllabus/formatter/ical'
-#require_relative 'formatter/slides'
+require 'academica/syllabus/formatter/slides'
