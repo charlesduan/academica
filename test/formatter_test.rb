@@ -1,8 +1,7 @@
 #!/usr/bin/env ruby
 
 require_relative 'test_helper'
-require 'academica/syllabus/formatter'
-require 'academica/syllabus/class_day'
+require 'academica/syllabus'
 
 class FormatterTest < Minitest::Test
 
@@ -25,12 +24,21 @@ class FormatterTest < Minitest::Test
   def formatter_battery(
     formatter_class, options = {}, expectations = { default: :default }
   )
+
     setup_syllabus_inputs
     @syllabus = Syllabus.new(@syl_input.update(:books => @book_input))
 
 
     @io = StringIO.new
     @formatter = formatter_class.new(@io, options)
+
+    # Just make sure these all work and don't produce errors
+    assert_match(/book/, @formatter.format_book_name("book", "url", true))
+    assert_match(/book/, @formatter.format_book_name("book", "url", false))
+    assert_match(/book/, @formatter.format_book_name("book", "url"))
+    assert_match(/book/, @formatter.format_book_name("book", nil, true))
+    assert_match(/book/, @formatter.format_book_name("book", nil, false))
+    assert_match(/book/, @formatter.format_book_name("book", nil))
 
     # Just test that these raise nothing
     @io.truncate(0); @io.pos = 0
@@ -50,7 +58,12 @@ class FormatterTest < Minitest::Test
     formatter_check(@io.string, expectations, :due_date, /Final/i)
 
     @io.truncate(0); @io.pos = 0
-    @formatter.format_noclass(Date.new(2024, 11, 12), "Holiday")
+    @formatter.format_noclass(
+      AcademicCalendar::DateRange.new(
+        start: Date.new(2024, 11, 12),
+        stop: Date.new(2024, 11, 12),
+        explanation: "Holiday")
+    )
     formatter_check(@io.string, expectations, :noclass, /Holiday/i)
 
     @io.truncate(0); @io.pos = 0
@@ -103,7 +116,7 @@ class FormatterTest < Minitest::Test
     })
   end
 
-  def test_tex_formatter
+  def test_html_formatter
     formatter_battery(Syllabus::HtmlFormatter, {}, {
       :counts => :none,
     })

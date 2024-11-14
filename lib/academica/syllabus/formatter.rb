@@ -24,10 +24,20 @@ class Syllabus
     end
 
     #
-    # Produces a standard date format for text.
+    # Produces a standard date format for text. Can also format a date range if
+    # a stop date is given, and can format an AcademicCalendar::DateRange.
     #
-    def text_date(date)
-      return date.strftime('%B %e')
+    def text_date(date, stop_date: nil, range_sep: '-')
+      if date.is_a?(AcademicCalendar::DateRange)
+        return text_date(date.start, stop_date: date.stop, range_sep: range_sep)
+      end
+      text = date.strftime('%B %e')
+      if stop_date && stop_date != date
+        text += range_sep
+        text += stop_date.strftime("%B ") if date.month != stop_date.month
+        text += stop_date.strftime("%e")
+      end
+      return text
     end
 
     #
@@ -45,10 +55,10 @@ class Syllabus
           else raise "Unknown object for finding a textbook"
           end
       if @book_state[b.key]
-        return format_book_name(b.short, b.url)
+        return format_book_name(b.short, b.url, false)
       else
         @book_state[b.key] = true
-        return format_book_name(b.name, b.url)
+        return format_book_name(b.name, b.url, true)
       end
     end
 
@@ -94,7 +104,7 @@ class Syllabus
     end
 
     # Formats the header line for a non-class day.
-    def format_noclass(date, expl)
+    def format_noclass(date_range)
       raise "Abstract method not implemented"
     end
 
@@ -120,8 +130,8 @@ class Syllabus
     #
     # Override this method to produce a formatted book name.
     #
-    def format_book_name(text, url)
-      return "#{text}, #{url}" if url
+    def format_book_name(text, url, full = true)
+      return "#{text}, #{url}" if full && url
       return text
     end
 

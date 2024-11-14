@@ -85,24 +85,45 @@ class Syllabus
   end
 
   def post_initialize
+    @warning = nil
 
     # Find default textbook
     defaults = @books.values.select { |tb| tb.default }
     input_err("Too many default textbooks") if defaults.count > 1
     @default_textbook = defaults[0]
 
-    # Assign sequence numbers to classes
-    seq = 1
-    @classes.each do |cgroup|
-      cgroup.classes.each do |cday|
-        cday.sequence = seq
-        seq += 1
-      end
+    # Assign sequence numbers and dates to classes
+    all_classes = to_a
+    all_dates = dates.to_a
+    excess_classes = all_classes.count - all_dates.count
+    if excess_classes > 0
+      @warning = "There are #{excess_classes} too many classes"
+      all_dates.concat(all_dates.last * excess_classes)
+    elsif excess_classes < 0
+      @warning = "There are #{-excess_classes} days with no class"
+      # zip will truncate the excesses
+    end
+    all_classes.zip(all_dates, 1..all_classes.count) do |cday, date, seq|
+      cday.sequence = seq
+      cday.date = date
+      cday.group.date ||= date # The first class in a group sets the group date
     end
 
   end
 
   attr_reader :default_textbook
+
+
+  #
+  # Enumerates over the classes (not the class groups).
+  #
+  def each
+    @classes.each do |cgroup|
+      cgroup.classes.each do |cday|
+        yield(cday)
+      end
+    end
+  end
 
   def fqn
     "#@number: #@name"
@@ -135,16 +156,9 @@ class Syllabus
   #
   def format(formatter)
     raise "Invalid formatter" unless formatter.is_a?(Syllabus::Formatter)
-
-    # The elements are arrays, where the first sub-element is a group name if
-    # any and the second sub-element is a class object.
-    clist = []
-    @classes.each do |cgroup|
-      raise "Invalid class #{cgroup.class}" unless cgroup.is_a?(ClassGroup)
-      cgroup.classes.each do |cday|
-        clist.push([ cgroup, cday ])
-        cgroup = nil
-      end
+    if @warning
+      warn(@warning)
+      @warning = nil
     end
 
     # Construct a list of items to include in the syllabus. The items are
@@ -158,28 +172,21 @@ class Syllabus
       [ date, 3, proc { formatter.format_due_date(date, text) } ]
     }
 
-    # Each available day adds further items to the list, drawing from the
-    # ClassDay objects in `clist`.
-    @dates.each do |date, has_class, expl|
-      if has_class
-        if clist.empty?
-          puts("Not enough classes for all days")
-          break
-        end
-        cgroup, cday = clist.shift
-        items.push([
-          date, 2, proc { formatter.format_section(cgroup.section) }
-        ]) if cgroup&.section
+    items.concat(self.map { |cday|
+      [ cday.date, 4, proc { format_one_class(formatter, cday) } ]
+    })
 
-        items.push([
-          date, 4, proc { format_one_class(formatter, date, cday) }
-        ])
-      else
-        items.push([ date, 1, proc { formatter.format_noclass(date, expl) } ])
-      end
+    @classes.map { |cgroup|
+      items.push([
+        cgroup.date, 2, proc { formatter.format_section(cgroup.section) }
+      ]) if cgroup.section
+    }
+
+    @dates.each_relevant_skip do |skip_range|
+      items.push([
+        skip_range.start, 1, proc { formatter.format_noclass(skip_range) }
+      ])
     end
-
-    warn("Too many classes and not enough days") unless clist.empty?
 
     # Now process all the items, in sorted date and priority order.
     formatter.pre_output(self)
@@ -188,8 +195,8 @@ class Syllabus
 
   end
 
-  def format_one_class(formatter, date, cday)
-    formatter.format_class_header(date, cday)
+  def format_one_class(formatter, cday)
+    formatter.format_class_header(cday.date, cday)
     cday.readings.each do |reading|
       # TODO: The below variables should be updated based on the
       # coursepack.

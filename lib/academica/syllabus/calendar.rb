@@ -9,6 +9,7 @@ class AcademicCalendar
   class DateRange
 
     include Structured
+    include Enumerable
 
     set_description <<~EOF
       A date range, with an optional explanatory description.
@@ -38,12 +39,12 @@ class AcademicCalendar
     include Structured
 
     element(
-      :start, Date, preproc: proc { |s| Date.parse(s) },
+      :start, Date, preproc: proc { |s| s.is_a?(String) ? Date.parse(s) : s },
       description: "Start date of the date range",
     )
 
     element(
-      :stop, Date, preproc: proc { |s| Date.parse(s) },
+      :stop, Date, preproc: proc { |s| s.is_a?(String) ? Date.parse(s) : s },
       description: "end date of the date range",
       optional: true
     )
@@ -65,17 +66,15 @@ class AcademicCalendar
     end
 
     #
-    # Tests whether a date is included in the range.
-    #
-    def include?(date)
-      date >= @start && date <= @stop
-    end
-
-    #
     # Returns all dates in the range.
     #
     def to_a
       return (@start..@stop).to_a
+    end
+
+    # Iterates the range.
+    def each
+      @start.upto(@stop) do |date| yield(date) end
     end
 
   end
@@ -157,40 +156,28 @@ class AcademicCalendar
   # and that the date be within an additional-days range or not within a
   # skip-days range.
   #
-  # Returns two values:
-  # - A boolean for whether the date is a class day
-  # - A string of explanation, or nil
+  # Returns a boolean for whether the date is a class day.
   #
-  def check(date)
+  def include?(date, ignore_skip: false)
 
     # If the date is in an add range, then it passes the test no matter what.
-    if @add
-      add_range = @add.find { |range| range.include?(date) }
-      return [ true, add_range.explanation ] if add_range
-    end
+    return true if @add.any? { |range| range.include?(date) }
 
     # Make sure the date meets the day-of-week and range tests
-    return [ false, nil ] unless @days.include?(date.strftime("%A"))
-    return [ false, nil ] if date < @start || date > @stop
+    return false unless @days.include?(date.strftime("%A"))
+    return false if date < @start || date > @stop
 
-    # If the date is in a skip range, then it is not included
-    if @skip
-      skip_range = @skip.find { |range| range.include?(date) }
-      return [ false, skip_range.explanation ] if skip_range
-    end
+    # If the date is in a skip range, then it is not included. But don't do this
+    # if ignore_skip was set.
+    return false if !ignore_skip && @skip.any? { |range| range.include?(date) }
 
     # Otherwise, the date is in the calendar.
-    return [ true, nil ]
-
+    return true
   end
 
   #
-  # Iterates across relevant dates in the academic calendar range. This method
-  # yields for each day on which class is held, AND for each day when class is
-  # not being held where an explanation is given.
-  #
-  # The block should take three arguments: the date, a boolean of whether class
-  # is held, and an explanation string.
+  # Iterates across relevant dates in the academic calendar range, for dates
+  # when class is held. Yields each such date.
   #
   def each
 
@@ -200,8 +187,18 @@ class AcademicCalendar
     real_stop = [ @stop, @add && @add.map(&:stop).max ].compact.max
 
     real_start.upto(real_stop) do |date|
-      has_class, expl = check(date)
-      yield(date, has_class, expl) if has_class || expl
+      yield(date) if include?(date)
+    end
+  end
+
+  #
+  # Iterates over all the skip ranges, yielding only for those skip ranges that
+  # include at least one date that otherwise could have been a class day. Yields
+  # the DateRange object.
+  #
+  def each_relevant_skip
+    @skip.each do |s|
+      yield(s) if s.any? { |date| include?(date, ignore_skip: true) }
     end
   end
 

@@ -172,8 +172,10 @@ class TestFormatter < Syllabus::Formatter
   def format_class_header(date, one_class)
     @record.push("format_class_header #{date.iso8601} #{one_class.name}")
   end
-  def format_noclass(date, expl)
-    @record.push("format_noclass #{date.iso8601} #{expl}")
+  def format_noclass(date_range)
+    @record.push(
+      "format_noclass #{date_range.start.iso8601} #{date_range.explanation}"
+    )
   end
   def format_assignments(assignments)
     @record.push("format_assignments #{assignments.join(', ')}") if @verbose

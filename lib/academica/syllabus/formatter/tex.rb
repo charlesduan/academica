@@ -53,8 +53,9 @@ class Syllabus
       end
     end
 
-    def format_book_name(name, url)
+    def format_book_name(name, url, full = true)
       res = escape(name)
+      # URL is always included since it shows up just as one character
       res << "~\\url{#{escape(url)}}" if url
       return res
     end
@@ -126,8 +127,9 @@ class Syllabus
       @outio.puts "\n\\Class{#{text_date(date)}} #{escape(one_class.name)}"
     end
 
-    def format_noclass(date, expl)
-      @outio.puts "\n\\NoClass{#{text_date(date)}} #{escape(expl)}"
+    def format_noclass(date_range)
+      @outio.puts "\n\\NoClass{#{text_date(date_range)}} " \
+        "#{escape(date_range.explanation)}"
     end
 
     def format_section(section)

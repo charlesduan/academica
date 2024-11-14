@@ -72,6 +72,12 @@ class ClassDayTest < Minitest::Test
     assert_equal 'Class Day Two', cg.classes[1].name
   end
 
+  def test_class_day_group
+    cg = Syllabus::ClassGroup.new(@class_group_input)
+    assert_equal cg, cg.classes[0].group
+    assert_equal cg, cg.classes[1].group
+  end
+
   def test_class_group_no_classes
     @class_group_input.delete(:classes)
     assert_raises(Structured::InputError) {

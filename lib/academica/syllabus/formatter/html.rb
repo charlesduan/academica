@@ -31,29 +31,31 @@ class Syllabus
     end
 
     def format_due_date(date, expl)
-      @outio.puts "\n<p>\n"
-      @outio.puts "<b>DUE #{date.strftime('%B %e')}:"
-      @outio.puts "#{expl}</b>"
-      @outio.puts "</p>"
+      @outio.puts <<~EOF
+        <p>
+          <b>DUE #{date.strftime('%B %e')}:" #{expl}</b>
+        </p>
+
+      EOF
     end
 
-    def format_noclass(date, expl)
-      @outio.puts "\n<p>\n"
-      @outio.puts "<b>No Class: #{date.strftime('%B %e')}:"
-      @outio.puts "#{expl}</b>"
-      @outio.puts "</p>"
+    def format_noclass(date_range)
+      @outio.puts <<~EOF
+        <p>
+          <b>No Class: #{text_date(date_range)}: #{date_range.explanation}</b>
+        </p>
+
+      EOF
     end
 
     def format_section(section)
       @outio.puts "\n<h3>#{escape(section)}</h3>\n"
     end
 
-    def format_book_name(name, url)
-      if url
-        "<a href=\"#{url}\">#{escape(name)}</a>"
-      else
-        escape(name)
-      end
+    def format_book_name(name, url, full = true)
+      # URL is always included
+      return "<a href=\"#{url}\">#{escape(name)}</a>" if url
+      return escape(name)
     end
 
     def format_reading(reading, pagetext, start_page, stop_page)

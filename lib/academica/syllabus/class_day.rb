@@ -32,6 +32,11 @@ class Syllabus
     #
     attr_accessor :sequence
 
+    #
+    # The date of the class, set by the Syllabus.
+    #
+    attr_accessor :date
+
     def word_count
       required = readings.reject(&:optional)
       web = false
@@ -52,6 +57,10 @@ class Syllabus
       return required.sum(&:page_count).to_s + (web ? "+" : "")
     end
 
+    def group
+      return @parent
+    end
+
   end
 
 
@@ -60,7 +69,7 @@ class Syllabus
     include Structured
 
     def inspect
-      return "#<ClassDay classes=#{@classes.count}>"
+      return "#<ClassGroup classes=#{@classes.count}>"
     end
 
 
@@ -76,6 +85,11 @@ class Syllabus
     element(:section, String, optional: true, description: <<~EOF)
       Section heading for this group.
     EOF
+
+    #
+    # The date of the class group, set by the Syllabus.
+    #
+    attr_accessor :date
 
   end
 end

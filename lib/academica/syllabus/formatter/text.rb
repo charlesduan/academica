@@ -17,8 +17,9 @@ class Syllabus
         "#{one_class.name}"
     end
 
-    def format_noclass(date, expl)
-      @outio.puts("\n#{text_date(date)}: NO CLASS -- #{expl}")
+    def format_noclass(date_range)
+      @outio.puts("\n#{text_date(date_range)}: NO CLASS -- " \
+                  "#{date_range.explanation}")
     end
 
     def format_due_date(date, assignment)
@@ -66,6 +67,10 @@ class Syllabus
       end
     end
 
+    def format_book_name(text, url, full = true)
+      return "#{text}, online" if full && url
+      return text
+    end
 
   end
 end

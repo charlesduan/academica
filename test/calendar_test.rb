@@ -19,6 +19,19 @@ class TestCalendar < Minitest::Test
     assert_equal 'Holiday', r.explanation
   end
 
+  def test_range_each
+    r = AcademicCalendar::DateRange.new({
+      :start => '2024-11-12',
+      :stop => '2024-11-19',
+      :explanation => 'Holiday',
+    })
+    arr = r.to_a
+    assert_equal 8, r.count
+    Date.new(2024, 11, 12).upto(Date.new(2024, 11, 19)) do |d|
+      assert_equal d, arr.shift
+    end
+  end
+
   def test_range_parse
     assert_equal(
       { :start => '2024-11-12', :stop => '2024-11-12' },
@@ -80,10 +93,10 @@ class TestCalendar < Minitest::Test
 
     # Also test iterator
     enum = calendar.to_enum
-    assert_equal Date.new(2024, 11, 5), enum.next.first
-    assert_equal Date.new(2024, 11, 12), enum.next.first
-    assert_equal Date.new(2024, 11, 19), enum.next.first
-    assert_equal Date.new(2024, 11, 26), enum.next.first
+    assert_equal Date.new(2024, 11, 5), enum.next
+    assert_equal Date.new(2024, 11, 12), enum.next
+    assert_equal Date.new(2024, 11, 19), enum.next
+    assert_equal Date.new(2024, 11, 26), enum.next
   end
 
   def test_add
@@ -95,13 +108,13 @@ class TestCalendar < Minitest::Test
     })
 
     enum = calendar.to_enum
-    assert_equal Date.new(2024, 10, 1), enum.next.first
-    assert_equal Date.new(2024, 11, 5), enum.next.first
-    assert_equal Date.new(2024, 11, 12), enum.next.first
-    assert_equal [ Date.new(2024, 11, 16), true, 'Extra' ], enum.next
-    assert_equal Date.new(2024, 11, 19), enum.next.first
-    assert_equal Date.new(2024, 11, 26), enum.next.first
-    assert_equal Date.new(2024, 12, 5), enum.next.first
+    assert_equal Date.new(2024, 10, 1), enum.next
+    assert_equal Date.new(2024, 11, 5), enum.next
+    assert_equal Date.new(2024, 11, 12), enum.next
+    assert_equal Date.new(2024, 11, 16), enum.next
+    assert_equal Date.new(2024, 11, 19), enum.next
+    assert_equal Date.new(2024, 11, 26), enum.next
+    assert_equal Date.new(2024, 12, 5), enum.next
 
   end
 
@@ -117,11 +130,29 @@ class TestCalendar < Minitest::Test
     assert_equal 1, calendar.skip.count
 
     enum = calendar.to_enum
-    assert_equal [ Date.new(2024, 11, 5), true, nil ], enum.next
-    assert_equal [ Date.new(2024, 11, 12), false, 'Holiday' ], enum.next
-    assert_equal [ Date.new(2024, 11, 16), true, 'Extra' ], enum.next
-    assert_equal [ Date.new(2024, 11, 19), false, 'Holiday' ], enum.next
-    assert_equal [ Date.new(2024, 11, 26), true, nil ], enum.next
+    assert_equal Date.new(2024, 11, 5), enum.next
+    assert_equal Date.new(2024, 11, 16), enum.next
+    assert_equal Date.new(2024, 11, 26), enum.next
+  end
+
+  def test_relevant_skip
+    calendar = AcademicCalendar.new({
+      :start => '2024-11-01',
+      :stop => '2024-11-30',
+      :days => %w(Tuesday),
+      :skip => [
+        '2024-11-12 to 2024-11-19, Holiday',
+        '2024-11-02, Irrelevant Holiday',
+      ],
+    })
+
+    assert_equal 2, calendar.skip.count
+
+    res = []
+    calendar.each_relevant_skip do |skip| res.push(skip) end
+    assert_equal 1, res.count
+    assert_kind_of AcademicCalendar::DateRange, res[0]
+    assert_equal Date.new(2024, 11, 12), res[0].start
   end
 
 end

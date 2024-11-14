@@ -58,7 +58,7 @@ class Syllabus
       end
     end
 
-    def format_noclass(date, expl)
+    def format_noclass(date_range)
     end
 
     def format_section(section)
@@ -77,7 +77,7 @@ class Syllabus
       @event_items.push(res)
     end
 
-    def format_book_name(name, url)
+    def format_book_name(name, url, full = true)
       return "#{escape(name)}, #{url}"
     end
 
