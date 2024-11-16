@@ -3,7 +3,7 @@
 require_relative 'test_helper'
 require 'academica/syllabus/calendar'
 
-class TestCalendar < Minitest::Test
+class CalendarTest < Minitest::Test
 
   def test_range
     r = AcademicCalendar::DateRange.new({
