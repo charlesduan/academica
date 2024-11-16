@@ -20,7 +20,14 @@ class TestBank
     attr_reader :choices
 
     #
-    # The number of this question as assigned in a test bank.
+    # The original position of this question in the question array. This is
+    # assigned by the test bank, and is zero-indexed.
+    #
+    attr_accessor :original_number
+
+    #
+    # The number of this question after randomization of order. This is assigned
+    # by the test bank, and is one-indexed.
     #
     attr_accessor :assigned_number
 

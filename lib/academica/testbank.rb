@@ -14,7 +14,13 @@ class TestBank
   EOF
 
   element :questions, [ Question ], description: "List of questions"
-
+  def receive_questions(questions)
+    questions.each_with_index do |question, i|
+      question.original_number = i
+    end
+    @questions = questions
+  end
+  attr_reader :questions
 
   def count
     return @questions.count
@@ -26,7 +32,7 @@ class TestBank
   #
   def random_map
     return @random_map if @random_map
-    return @random_map = (0...@questions.count).inject([]) { |memo, qnum|
+    @random_map = (0...@questions.count).inject([]) { |memo, qnum|
       if @questions[qnum].must_follow
         memo.last.push(qnum)
       else
@@ -34,6 +40,11 @@ class TestBank
       end
       memo
     }.shuffle.flatten
+    @random_map.each_with_index do |qnum, idx|
+      @questions[qnum].assigned_number = idx + 1
+    end
+    return @random_map
+
   end
 
   #
