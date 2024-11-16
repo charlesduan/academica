@@ -123,6 +123,20 @@ class TestBank
       end
       @answer.add(randomizer)
       @errors.add(randomizer) if defined? @errors
+
+      fix_xref_choices(randomizer)
+    end
+
+    #
+    # For a ChoiceRandomizer, look for answer choices that cross-reference other
+    # choices, and fix those choices so they are not randomized.
+    #
+    def fix_xref_choices(randomizer)
+      return unless randomizer.is_a?(ChoiceRandomizer)
+      @choices.each do |key, value|
+        randomizer.fix(key.original) if value.has_randomizer(ChoiceRandomizer)
+        randomizer.fix(key.original) if value.original =~ /\bof the above\b/
+      end
     end
 
   end
