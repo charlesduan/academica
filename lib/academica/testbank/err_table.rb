@@ -75,6 +75,7 @@ class TestBank
           )
         end
       end
+    end
 
   end
 end

@@ -78,4 +78,13 @@ class RandomizerTest < Minitest::Test
     assert_equal %w((A) (B)), [ @c.text_for('(A)'), @c.text_for('(B)') ].sort
   end
 
+  def test_randomizer_randomizes
+    cr = TestBank::ChoiceRandomizer.new
+    arr = ('A' .. 'Z').map { |l| "(#{l})" }
+    new_arr = cr.replacements(arr, [])
+    # The probability that these arrays are equal is 1/26!
+    assert_operator new_arr, :!=, arr
+  end
+
+
 end

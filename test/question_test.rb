@@ -1,9 +1,13 @@
 #!/usr/bin/ruby
 
 require_relative 'test_helper'
-require 'academica/testbank'
+require 'academica/testbank/question'
 
 class QuestionTest < Minitest::Test
+
+  def rs(string)
+    return TestBank::RandomizableString.new(string)
+  end
 
   def test_err_table
     et = TestBank::Question::ErrorTable.new({
@@ -15,9 +19,9 @@ class QuestionTest < Minitest::Test
     assert_kind_of Hash, expl
     assert_equal 2, expl.count
 
-    ac = RandomizableString.new('(A)')
+    ac = rs('(A)')
     assert expl.include?(ac)
-    assert_equal RandomizableString.new("This choice is wrong"), expl[ac]
+    assert_equal rs("This choice is wrong"), expl[ac]
   end
 
   def test_err_table_invalid
@@ -29,32 +33,17 @@ class QuestionTest < Minitest::Test
     }
   end
 
-  #
-  # The next test belongs in randomizer_test.rb but it's here because I forgot
-  # to commit that file. I'm slightly changing the API of randomizers such that
-  # the substitute method should return items corresponding in order to the
-  # input array, and the randomizer should not further shuffle the list. This
-  # allows for randomized names in a question to remain in alphabetical order.
-  #
-  def test_randomizer_randomizes
-    cr = ChoiceRandomizer.new
-    arr = ('A' .. 'Z').map { |l| "(#{l})" }
-    new_arr = cr.substitute(arr)
-    # The probability that these arrays are equal is 1/26!
-    assert_not_equal new_arr, arr
-  end
-
   def test_err_table_randomize
     et = TestBank::Question::ErrorTable.new({
       'A' => 'This choice is as wrong as (B)',
       'B' => 'This is as bad as (A)',
     })
-    cr = ChoiceRandomizer.new
+    cr = TestBank::ChoiceRandomizer.new
     et.add(cr)
 
     expl = et.explanations
-    assert expl.keys.all? { |k| k.has_randomizer?(ChoiceRandomizer) }
-    assert expl.values.all? { |k| k.has_randomizer?(ChoiceRandomizer) }
+    assert expl.keys.all? { |k| k.has_randomizer?(cr) }
+    assert expl.values.all? { |k| k.has_randomizer?(cr) }
   end
 
   def setup
@@ -70,10 +59,14 @@ class QuestionTest < Minitest::Test
 
   def test_question_init
     q = TestBank::Question.new(@qinput)
-    assert_equal RandomizableString.new('What is the answer?'), q.question
-    assert_equal RandomizableString.new('First answer'), q.choice('A')
-    assert_equal RandomizableString.new('(A)'), q.answer
-    assert_equal RandomizableString.new('The others are wrong.'), q.explanation
+    assert_equal(TestBank::RandomizableString.new('What is the answer?'),
+                 q.question)
+    assert_equal(TestBank::RandomizableString.new('First answer'),
+                 q.choice('A'))
+    assert_equal(TestBank::RandomizableString.new('(A)'),
+                 q.answer)
+    assert_equal(TestBank::RandomizableString.new('The others are wrong.'),
+                 q.explanation)
   end
 
   def test_question_invalid_no_question
@@ -106,8 +99,8 @@ class QuestionTest < Minitest::Test
   def test_question_choices_randomizer
     q = TestBank::Question.new(@qinput)
     q.choices.each do |key, val|
-      assert_kind_of RandomizableString, key
-      assert_kind_of RandomizableString, val
+      assert_kind_of TestBank::RandomizableString, key
+      assert_kind_of TestBank::RandomizableString, val
     end
   end
 
@@ -128,9 +121,9 @@ class QuestionTest < Minitest::Test
 
   def test_errors
     q = TestBank::Question.new(@qinput.merge({
-      errors: { 'A' => 'This is wrong' }
+      errors: { 'A' => 'This is like (D)' }
     }))
-    assert_equal('This is wrong', q.errors['A'])
+    assert_equal('This is like (D)', q.errors['A'].randomized)
   end
 
   def test_errors_unexpected

@@ -35,9 +35,9 @@ class TestBank
     # Make a randomizable string, and add the class's choice randomizer to it.
     #
     def make_rs(string)
-      s = RandomizableString.new(s)
-      s.add(@cr)
-      return s
+      rs = RandomizableString.new(string)
+      rs.add(@cr)
+      return rs
     end
 
     set_description <<~EOF

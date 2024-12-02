@@ -35,8 +35,7 @@ class TestBank
 
     #
     # Given a list of texts to replace, returns a corresponding list of
-    # replacements (which may be the same list). The list of replacements will
-    # be randomly shuffled and then assigned to the texts.
+    # replacements (which may be the same list).
     #
     # The fixed argument is a list of texts that may not be included in the
     # return value.
@@ -84,7 +83,7 @@ class TestBank
       fixed, old = @texts.keys.partition { |k| @texts[k] }
       return if old.empty?
 
-      new = Set.new(replacements(old, fixed))
+      new = replacements(old, fixed)
 
       # Do some error checking on the replacement list
       unless old.count == new.count
@@ -94,8 +93,8 @@ class TestBank
         raise "#{this.class} returned a replacement that was already fixed"
       end
 
-      # Shuffle the new texts and assign them
-      old.zip(new.to_a.shuffle).each do |o, n| @texts[o] = n end
+      # Assign the new texts to the old ones
+      old.zip(new).each do |o, n| @texts[o] = n end
     end
 
     #
@@ -129,12 +128,13 @@ class TestBank
   # A randomizer for multiple choice items.
   #
   class ChoiceRandomizer < Randomizer
+    REGEXP = /\([A-Z]\)/
     def regexp
-      /\([A-Z]\)/
+      return REGEXP
     end
 
     def replacements(texts, fixed)
-      return texts
+      return texts.shuffle
     end
   end
 
