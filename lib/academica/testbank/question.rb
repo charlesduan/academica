@@ -129,6 +129,15 @@ class TestBank
       EOF
     )
 
+    element(
+      :position, Numeric, optional: true,
+      check: proc { |n| n >= 0 && n <= 1 },
+      description: <<~EOF
+        Approximate position for this question, expressed as a number between
+        0 and 1.
+      EOF
+    )
+
     def post_initialize
       @cr.randomize
 

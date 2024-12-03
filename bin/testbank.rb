@@ -27,7 +27,7 @@ class TestBankDispatcher < Dispatcher
   add_structured_commands
 
   def cmd_stats
-    testbank
+    puts "#{testbank.questions.count} questions found"
   end
 
 end
