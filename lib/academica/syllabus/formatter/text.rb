@@ -1,31 +1,35 @@
+require 'academica/format_tools'
+
 #
 # Formatter for text output.
 #
 class Syllabus
   class TextFormatter < Formatter
 
+    include Academica::FormatTools::Plain
+
     def post_initialize
       @verbose = @options[:verbose]
     end
 
     def format_section(section)
-      @outio.puts "\n\n#{section.upcase}\n"
+      @outio.puts "\n\n#{escape(section.upcase)}\n"
     end
 
     def format_class_header(date, one_class)
       @outio.puts "\n#{text_date(date)} (\##{one_class.sequence}): " \
-        "#{one_class.name}"
+        "#{escape(one_class.name)}"
     end
 
     def format_noclass(date_range)
       @outio.puts("\n#{text_date(date_range)}: NO CLASS -- " \
-                  "#{date_range.explanation}")
+                  "#{escape(date_range.explanation)}")
     end
 
     def format_due_date(date, assignment)
       @outio.puts("\n")
       @outio.puts(line_break(
-        "#{text_date(date)}: DUE DATE -- #{assignment}",
+        "#{text_date(date)}: DUE DATE -- #{escape(assignment)}",
         prefix: "  ", first_prefix: ""
       ))
     end
@@ -34,7 +38,7 @@ class Syllabus
 
       text = ""
       text << "(Optional) " if reading.optional
-      text << "#{reading.get_book.name}"
+      text << "#{book_for(reading)}"
       if start_page
         text << ", #{pagetext} #{start_page}"
         text << "-#{stop_page}" if stop_page
@@ -49,7 +53,7 @@ class Syllabus
         spaces = ' ' * (entry.level + 2)
         lead = entry.number ? "#{entry.number}." : '-'
         @outio.puts(line_break(
-          entry.text, first_prefix: "#{spaces}#{lead}",
+          escape(entry.text), first_prefix: "#{spaces}#{lead}",
           prefix: "#{spaces}#{' ' * lead.length}"
         ))
       end
@@ -62,14 +66,14 @@ class Syllabus
     def format_assignments(assignments)
       assignments.each do |assignment|
         @outio.puts(line_break(
-          assignment.to_s, prefix: '  ', first_prefix: '* '
+          escape(assignment.to_s), prefix: '  ', first_prefix: '* '
         ))
       end
     end
 
     def format_book_name(text, url, full = true)
-      return "#{text}, online" if full && url
-      return text
+      return "#{escape(text)}, online" if full && url
+      return escape(text)
     end
 
   end

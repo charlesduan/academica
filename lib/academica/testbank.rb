@@ -1,5 +1,7 @@
 require 'structured'
 require 'academica/testbank/question'
+require 'academica/testbank/formatter'
+require 'academica/testbank/name_randomizer'
 
 #
 # Represents a test bank of multiple questions.
@@ -20,7 +22,6 @@ class TestBank
     end
     @questions = questions
   end
-  attr_reader :questions
 
   def count
     return @questions.count
@@ -48,6 +49,22 @@ class TestBank
   end
 
   #
+  # Randomizes all the questions and also randomizes the order of the
+  # questions.
+  #
+  def randomize
+    random_map
+    name_randomizer = nil
+    each do |question|
+      if !name_randomizer || !question.must_follow
+        name_randomizer = NameRandomizer.new
+      end
+      question.add(name_randomizer)
+      question.randomize
+    end
+  end
+
+  #
   # Iterates through each question in the randomly shuffled list. To iterate
   # questions in the non-shuffled list, access the :questions instance variable.
   #
@@ -63,6 +80,18 @@ class TestBank
   def [](num)
     qnum = random_map[num]
     return qnum && @questions[qnum]
+  end
+
+
+  #
+  # Formats a complete test bank.
+  #
+  def format(formatter)
+    formatter.pre_output
+    each do |question|
+      question.format(formatter)
+    end
+    formatter.post_output
   end
 
 end

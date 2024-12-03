@@ -17,6 +17,10 @@ class TestBank
       # mapped to their replacements or nil if no replacement has been assigned.
       #
       @texts = {}
+      #
+      # This will be a reverse lookup table (randomizable text to original).
+      #
+      @lookup = {}
     end
 
     ########################################################################
@@ -69,7 +73,10 @@ class TestBank
     #
     def fix(string, val = nil)
       raise "Randomizer has no string #{string}" unless @texts.include?(string)
-      @texts[string] = val || string
+      val ||= string
+      raise "Fixed value #{val} already used in Randomizer" if @lookup[val]
+      @texts[string] = val
+      @lookup[val] = string
     end
 
     #
@@ -94,7 +101,11 @@ class TestBank
       end
 
       # Assign the new texts to the old ones
-      old.zip(new).each do |o, n| @texts[o] = n end
+      old.zip(new).each do |o, n|
+        @texts[o] = n
+        raise "#{this.class} returned a duplicate replacement" if @lookup[n]
+        @lookup[n] = o
+      end
     end
 
     #
@@ -109,6 +120,13 @@ class TestBank
         raise "#{self.class} has not yet randomized #{original}"
       end
       return @texts[original]
+    end
+
+    #
+    # Returns the original text given a randomized value.
+    #
+    def original_for(randomized)
+      return @lookup[randomized]
     end
 
     #

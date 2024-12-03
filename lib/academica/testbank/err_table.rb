@@ -34,7 +34,9 @@ class TestBank
           RandomizableString.new(value)
       end
       attr_reader :explanations
+
       def add(randomizer)
+        @cr = randomizer if randomizer.is_a?(ChoiceRandomizer)
         @explanations.each do |key, value|
           key.add(randomizer)
           value.add(randomizer)
@@ -53,29 +55,27 @@ class TestBank
         end
         return @explanations[choice]
       end
-    end
 
 
-    #
-    # Produces formatting for this error table. If `wrong_choice` is given, then
-    # format only that choice (to the extent that it has an explanation).
-    # Otherwise, show all explanations.
-    #
-    def format(formatter, wrong_choice)
-      if wrong_choice
-        formatter.format_wrong_answer(
-          wrong_choice,
-          @errors.find { |l, t| l.randomized == wrong_choice }&.last
-        )
-      else
-        @explanations.sort_by { |l, t| l.randomized }.each do |letter, text|
-          formatter.format_wrong_answer(
-            letter.randomized,
-            text.randomized
-          )
+      #
+      # Produces formatting for this error table. If `wrong_choice` is given,
+      # then format only that choice (to the extent that it has an explanation).
+      # Otherwise, show all explanations.
+      #
+      def format(formatter, wrong_choice = nil)
+        if wrong_choice
+          elts = @errors.find { |l, t| l.randomized == wrong_choice }
+          return unless elts
+          formatter.format_wrong_answer(wrong_choice, elts.last.randomized)
+        else
+          @explanations.sort_by { |l, t| l.randomized }.each do |letter, text|
+            formatter.format_wrong_answer(letter.randomized, text.randomized)
+          end
         end
       end
-    end
 
-  end
-end
+    end # of ErrTable
+
+
+  end # of Question
+end # of TestBank

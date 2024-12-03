@@ -1,11 +1,10 @@
 require 'json'
+require 'academica/format_tools'
 
 class Syllabus
   class JsonFormatter < Syllabus::Formatter
 
-    def escape(text)
-      markdown(text, b: [ '', '' ], i: [ '', '' ])
-    end
+    include Academica::FormatTools::Plain
 
     def pre_output
       @object = {

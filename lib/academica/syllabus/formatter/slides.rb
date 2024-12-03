@@ -1,3 +1,5 @@
+require 'academica/format_tools'
+
 #
 # Formatter for producing slides.
 #
@@ -5,16 +7,7 @@
 class Syllabus
   class SlidesFormatter < Formatter
 
-    #
-    # Given a string of text, formats it for TeX output.
-    #
-    def escape(text)
-      return markdown(
-        text.gsub(/[&_^%$]/) { |x| "\\#{x}" },
-        i: %w(\emph{ }), b: %w(\textbf{ })
-      ) 
-    end 
-
+    include Academica::FormatTools::TeX
 
     def format_section(section)
     end

@@ -1,12 +1,12 @@
 require 'icalendar'
 require 'icalendar/tzinfo'
 require 'time'
-require 'texttools'
+require 'academica/format_tools'
 
 class Syllabus
   class IcalFormatter < Formatter
 
-    include TextTools
+    include Academica::FormatTools::Plain
 
     def pre_output
       @calendar = Icalendar::Calendar.new
@@ -28,10 +28,6 @@ class Syllabus
     end
 
     attr_reader :calendar
-
-    def escape(text)
-      return markdown(text, i: [ '', '' ], b: [ '', '' ])
-    end
 
     def format_class_header(date, one_class)
       @current_event = @calendar.event

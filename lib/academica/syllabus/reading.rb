@@ -91,6 +91,10 @@ class Syllabus
       the reading.
     EOF
 
+    def pre_initialize
+      @all = false
+    end
+
     def post_initialize
       input_err("No Textbook found") unless get_book
 

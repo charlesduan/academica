@@ -1,25 +1,9 @@
-require 'texttools'
+require 'academica/format_tools'
 
 class Syllabus
   class HtmlFormatter < Formatter
 
-    include TextTools
-
-    def escape(text)
-      {
-        "&" => "&amp;",
-        "``" => "&ldquo;",
-        "''" => "&rdquo;",
-        "`" => "&lsquo;",
-        "'" => "&rsquo;",
-        "---" => "&mdash;",
-        "--" => "&ndash;",
-        "~" => "&nbsp;",
-      }.each do |find, repl|
-        text = text.gsub(find, repl)
-      end
-      return markdown(text)
-    end
+    include Academica::FormatTools::Html
 
     def format_class_header(date, one_class)
       @outio.puts "\n<p>\n"

@@ -51,7 +51,6 @@ class TestBank
     def receive_question(q)
       @question = RandomizableString.new(q)
     end
-    attr_reader :question
 
     default_element(
       String,
@@ -90,7 +89,6 @@ class TestBank
       end
       @answer = make_rs(answer)
     end
-    attr_reader :answer
 
     element(
       :explanation, String, optional: true, description: <<~EOF,
@@ -100,7 +98,6 @@ class TestBank
     def receive_explanation(explanation)
       @explanation = make_rs(explanation)
     end
-    attr_reader :explanation
 
     element(
       :errors, ErrorTable, optional: true,
@@ -110,7 +107,6 @@ class TestBank
       errors.add(@cr)
       @errors = errors
     end
-    attr_reader :errors
 
     element(
       :must_follow, :boolean, optional: true, default: false,
@@ -205,15 +201,22 @@ class TestBank
     #
     # Formats a question using the given formatter.
     #
-    def format(formatter, wrong_choice)
+    def format(formatter, wrong_choice = nil)
       formatter.format_question(assigned_number, question.randomized)
-      choices.sort_by { |l, t| l.randomized }.each do |letter, text|
-        formatter.format_choice(letter.randomized, text.randomized)
+
+      if choices && !choices.empty?
+        formatter.format_start_choices
+        choices.sort_by { |l, t| l.randomized }.each do |letter, text|
+          formatter.format_choice(letter.randomized, text.randomized)
+        end
+        formatter.format_end_choices
       end
+
       formatter.format_answer(answer.randomized, explanation.randomized)
       if defined? @errors
         @errors.format(formatter, wrong_choice)
       end
+
     end
 
   end

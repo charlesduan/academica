@@ -1,3 +1,5 @@
+require 'academica/format_tools'
+
 #
 # Produces formatting for a TeX file.
 #
@@ -24,15 +26,7 @@
 class Syllabus
   class TexFormatter < Syllabus::Formatter
 
-    #
-    # Given a string of text, formats it for TeX output.
-    #
-    def escape(text)
-      return markdown(
-        text.gsub(/[&_^%$]/) { |x| "\\#{x}" },
-        i: %w(\emph{ }), b: %w(\textbf{ })
-      )
-    end
+    include Academica::FormatTools::TeX
 
     #
     # Given one or more template items, prints them to the file.

@@ -26,9 +26,32 @@ class TestBankDispatcher < Dispatcher
 
   add_structured_commands
 
+  def help_stats
+    "Provides general statistics on the test bank's questions."
+  end
   def cmd_stats
     puts "#{testbank.questions.count} questions found"
+    tags = Hash.new(0)
+    testbank.questions.each do |q|
+      q.tags.each do |t|
+        tags[t] += 1
+      end
+    end
+    tags.sort_by { |t, c| [ -c, t ] }.each do |tag, count|
+      printf("  % 2d: %s\n", count, tag)
+    end
   end
+
+  def help_exam
+    "Generates an exam question file, based on randomizing the questions."
+  end
+
+  def cmd_exam
+    f = TestBank::ExamFormatter.new(testbank, STDOUT, @options)
+    testbank.randomize
+    testbank.format(f)
+  end
+
 
 end
 

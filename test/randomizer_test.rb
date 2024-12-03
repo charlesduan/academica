@@ -2,6 +2,7 @@
 
 require_relative 'test_helper'
 require 'academica/testbank'
+require 'set'
 
 class RandomizerTest < Minitest::Test
 
@@ -84,6 +85,47 @@ class RandomizerTest < Minitest::Test
     new_arr = cr.replacements(arr, [])
     # The probability that these arrays are equal is 1/26!
     assert_operator new_arr, :!=, arr
+  end
+
+  def next_start_letter(letter)
+    return 'A' if letter == 'Z'
+    return letter.next
+  end
+
+  def test_name_randomizer_names
+    n = TestBank::NameRandomizer::NAMES
+    assert_equal(Set.new('A'..'Z'), Set.new(n.map(&:first)))
+    n.each do |letter, names|
+      names.each do |name|
+        assert_equal letter, name.chr
+      end
+    end
+  end
+
+  def test_name_randomizer
+    nr1 = TestBank::NameRandomizer.new
+    m = nr1.match("Name is Andrew")
+    assert_kind_of MatchData, m
+    assert_nil nr1.match("Name is Alice")
+    m = nr1.match("Name is Bob")
+    assert_kind_of MatchData, m
+    m = nr1.match("Name is Charlie")
+    assert_kind_of MatchData, m
+
+    nr1.randomize
+    ltr = nr1.text_for('Andrew').chr
+    ltr = next_start_letter(ltr)
+    assert_equal ltr, nr1.text_for('Bob').chr
+    ltr = next_start_letter(ltr)
+    assert_equal ltr, nr1.text_for('Charlie').chr
+
+    nr2 = TestBank::NameRandomizer.new
+    m = nr2.match("Name is Andrew")
+    assert_kind_of MatchData, m
+
+    nr2.randomize
+    ltr = next_start_letter(ltr)
+    assert_equal ltr, nr2.text_for('Andrew').chr
   end
 
 

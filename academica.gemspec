@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
     s.author = [ 'Charles Duan' ]
     s.email = 'rubygems.org@cduan.com'
     s.executables = [ 'grade.rb', "syllabus.rb" ]
-    s.add_runtime_dependency "cli-dispatcher", "~>1.1.8"
+    s.add_runtime_dependency "cli-dispatcher", "~>1.2.1"
     s.add_runtime_dependency "ruby-statistics", "~>3.0"
     s.add_runtime_dependency "tzinfo", "~>2.0.6"
     s.add_runtime_dependency "icalendar", "~>2.9.0"
