@@ -9,19 +9,39 @@ class TestBankDispatcher < Dispatcher
 
   def initialize
     @options = {
-      :file => 'testbank.yaml',
+      :input_file => 'testbank.yaml',
+      :rand_file => 'rand_data.yaml',
     }
   end
 
   def add_options(opts)
-    opts.on('-f', '--file FILE', 'Input file of questions') do |file|
-      @options[:file] = file
+    opts.on('-i', '--input FILE', 'Input file of questions') do |file|
+      @options[:input_file] = file
+    end
+    opts.on('-r', '--rand-file FILE', 'File for randomization data') do |file|
+      @options[:rand_file] = file
     end
   end
 
   def testbank
     return @testbank if defined? @testbank
-    return @testbank = TestBank.new(YAML.load_file(@options[:file]))
+
+    # Load the test bank
+    @testbank = TestBank.new(YAML.load_file(@options[:input_file]))
+
+    # If there is cached randomization data, use it
+    if @options[:rand_file] && File.exist?(@options[:rand_file])
+      @testbank.import(YAML.load_file(@options[:rand_file]))
+    else
+      # Otherwise, randomize the test bank and cache the randomization data
+      @testbank.randomize
+      if @options[:rand_file]
+        open(@options[:rand_file], 'w') do |io|
+          io.write(YAML.dump(@testbank.export))
+        end
+      end
+    end
+    return @testbank
   end
 
   add_structured_commands
@@ -48,7 +68,16 @@ class TestBankDispatcher < Dispatcher
 
   def cmd_exam
     f = TestBank::ExamFormatter.new(testbank, STDOUT, @options)
-    testbank.randomize
+    testbank.format(f)
+  end
+
+
+  def help_explanations
+    "Generates an exam answer explanations file."
+  end
+
+  def cmd_explanations
+    f = TestBank::ExplanationsFormatter.new(testbank, STDOUT, @options)
     testbank.format(f)
   end
 

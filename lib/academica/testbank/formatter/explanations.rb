@@ -1,32 +1,29 @@
 require 'academica/format_tools'
 class TestBank
 
-  class ExamFormatter < Formatter
+  class ExplanationsFormatter < Formatter
 
     include Academica::FormatTools::TeX
 
     def format_question(number, text)
-      res = "\\question{#{number}} #{escape(text)}"
-      @outio.write("\n" + line_break(res) + "\n\n")
+      @outio.write("\n\\question{#{number}}\n")
     end
-
     def format_start_choices
-      @outio.puts("\\begin{choices}")
     end
-
     def format_choice(letter, text)
-      res = "\\item[#{escape(letter)}] #{escape(text)}"
-      @outio.write(line_break(res) + "\n")
     end
-
     def format_end_choices
-      @outio.write("\\end{choices}\n\n")
     end
-
     def format_answer(answer, explanation)
+      @outio.write(line_break(
+        "\\textbf{#{escape(text_join(answer))}}. #{escape(explanation)}"
+      ) + "\n\n")
     end
 
     def format_wrong_answer(letter, explanation)
+      @outio.write(line_break(
+        "#{escape(letter)}: #{escape(explanation)}"
+      ) + "\n\n")
     end
 
   end

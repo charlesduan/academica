@@ -74,7 +74,12 @@ class TestBank
     def fix(string, val = nil)
       raise "Randomizer has no string #{string}" unless @texts.include?(string)
       val ||= string
-      raise "Fixed value #{val} already used in Randomizer" if @lookup[val]
+      if @texts[string] && @texts[string] != val
+        raise "Can't change value by fixing it"
+      end
+      if @lookup[val] && @lookup[val] != string
+        raise "Fixed value #{val} already used in Randomizer"
+      end
       @texts[string] = val
       @lookup[val] = string
     end
@@ -136,8 +141,22 @@ class TestBank
       if @texts.any? { |k, v| v.nil? }
         raise "Cannot export randomizer that isn't randomized"
       end
-      return @texts.dup
+      return {
+        'type' => self.class.to_s,
+        'texts' => @texts.dup,
+      }
     end
+
+    #
+    # Imports data for a randomizer.
+    #
+    def import(hash)
+      raise "Wrong Randomizer type" unless hash['type'] == self.class.to_s
+      hash['texts'].each do |string, val|
+        fix(string, val)
+      end
+    end
+
 
   end
 

@@ -135,8 +135,6 @@ class TestBank
     )
 
     def post_initialize
-      @cr.randomize
-
       # Check that the answer contains a choice if and only if choices are
       # given.
       if answer.has_randomizer?(@cr)
@@ -166,6 +164,7 @@ class TestBank
         value.add(randomizer)
       end
       @answer.add(randomizer)
+      @explanation.add(randomizer)
       @errors.add(randomizer) if defined? @errors
     end
 
@@ -175,6 +174,7 @@ class TestBank
     # multiple questions.
     #
     def randomize
+      @cr.randomize
       @randomizers.each(&:randomize)
     end
 
@@ -217,6 +217,37 @@ class TestBank
         @errors.format(formatter, wrong_choice)
       end
 
+    end
+
+    #
+    # Exports a question, primarily by exporting its randomizers.
+    #
+    def export
+      return {
+        'choice_randomizer' => @cr.export,
+        'randomizers' => @randomizers.map(&:export),
+        'original_number' => @original_number,
+        'assigned_number' => @assigned_number,
+      }
+    end
+
+    def import(hash)
+      if @original_number && @original_number != hash['original_number']
+        raise 'Inconsistent original number'
+      end
+      @original_number = hash['original_number']
+
+      if @assigned_number && @assigned_number != hash['assigned_number']
+        raise 'Inconsistent assigned number'
+      end
+      @assigned_number = hash['assigned_number']
+
+      @cr.import(hash['choice_randomizer'])
+      hash['randomizers'].each do |rdata|
+        @randomizers.find { |r|
+          r.class.to_s == rdata['type']
+        }.import(rdata)
+      end
     end
 
   end

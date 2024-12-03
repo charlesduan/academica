@@ -23,6 +23,26 @@ class TestBank
     @questions = questions
   end
 
+  #
+  # Adds any other randomizers to the questions. This is done here so that
+  # questions are set up with all their randomizers before import is called.
+  #
+  def post_initialize
+    nr = nil
+    @questions.each do |question|
+      #
+      # Generally each question gets a new name randomizer. But if the question
+      # must follow its predecessor, then the same name randomizer is used so
+      # that the names stay the same across questions.
+      #
+      nr = NameRandomizer.new unless question.must_follow
+      raise "First question cannot have must_follow" unless nr
+
+      question.add(nr)
+    end
+  end
+
+
   def count
     return @questions.count
   end
@@ -32,20 +52,7 @@ class TestBank
   # the lifetime of a single TestBank object).
   #
   def random_map
-    return @random_map if @random_map
-    @random_map = (0...@questions.count).inject([]) { |memo, qnum|
-      if @questions[qnum].must_follow
-        memo.last.push(qnum)
-      else
-        memo.push([ qnum ])
-      end
-      memo
-    }.shuffle.flatten
-    @random_map.each_with_index do |qnum, idx|
-      @questions[qnum].assigned_number = idx + 1
-    end
     return @random_map
-
   end
 
   #
@@ -53,15 +60,39 @@ class TestBank
   # questions.
   #
   def randomize
-    random_map
-    name_randomizer = nil
-    each do |question|
-      if !name_randomizer || !question.must_follow
-        name_randomizer = NameRandomizer.new
+
+    # Positioned values will be separated out
+    positioned = []
+
+    # Group questions together if they use must_follow. Then shuffle the groups
+    @random_map = (0...@questions.count).inject([]) { |memo, qnum|
+      if @questions[qnum].must_follow
+        memo.last.push(qnum)
+      elsif @questions[qnum].position
+        positioned.push(qnum)
+      else
+        memo.push([ qnum ])
       end
-      question.add(name_randomizer)
-      question.randomize
+      memo
+    }.shuffle
+
+    # Insert the positioned values.
+    positioned.each do |qnum|
+      pos = @questions[qnum].position * @random_map.count.floor
+      pos = [ 0, pos, @random_map.count ].sort[1]
+      @random_map.insert(pos, [ qnum ])
     end
+
+    # Flatten the list
+    @random_map = @random_map.flatten
+
+    # Assign question numbers, and randomize the questions. This way they are
+    # randomized in the order in which they will be presented.
+    @random_map.each_with_index do |qnum, idx|
+      @questions[qnum].assigned_number = idx + 1
+      @questions[qnum].randomize
+    end
+
   end
 
   #
@@ -92,6 +123,31 @@ class TestBank
       question.format(formatter)
     end
     formatter.post_output
+  end
+
+  #
+  # Exports the randomization data for this test bank.
+  #
+  def export
+    return {
+      'map' => @random_map,
+      'questions' => @questions.map(&:export),
+    }
+  end
+
+  #
+  # Imports randomization data into this test bank.
+  #
+  def import(hash)
+    @random_map = hash['map']
+    @questions.zip(hash['questions']).each do |q, data|
+      q.import(data)
+    end
+    @random_map.each_with_index do |qnum, idx|
+      if idx + 1 != @questions[qnum].assigned_number
+        raise "Inconsistent question number"
+      end
+    end
   end
 
 end

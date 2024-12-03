@@ -34,7 +34,7 @@ class RandomizerTest < Minitest::Test
     @c.match("(B)")
     @c.match("(C)")
     @c.randomize
-    hash = @c.export
+    hash = @c.instance_variable_get(:@texts)
     assert_kind_of Hash, hash
     assert_equal %w((A) (B) (C)), hash.keys.sort
     assert_equal %w((A) (B) (C)), hash.values.sort
@@ -47,7 +47,7 @@ class RandomizerTest < Minitest::Test
     @c.match("(C)")
     @c.fix('(C)')
     @c.randomize
-    hash = @c.export
+    hash = @c.instance_variable_get(:@texts)
     assert_kind_of Hash, hash
     assert_equal '(C)', hash['(C)']
     assert_equal %w((A) (B)), [ hash['(A)'], hash['(B)'] ].sort
@@ -59,10 +59,10 @@ class RandomizerTest < Minitest::Test
     @c.match("(B)")
     @c.match("(C)")
     @c.randomize
-    hash = @c.export
+    hash = @c.instance_variable_get(:@texts)
     100.times do
       @c.randomize
-      new_hash = @c.export
+      new_hash = @c.instance_variable_get(:@texts)
       assert_equal hash, new_hash
     end
   end

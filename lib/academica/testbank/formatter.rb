@@ -50,3 +50,4 @@ class TestBank
 end
 
 require 'academica/testbank/formatter/exam'
+require 'academica/testbank/formatter/explanations'
