@@ -6,7 +6,7 @@ class TestBank
     include Academica::FormatTools::TeX
 
     def format_question(number, text)
-      res = "\\question{#{number}} #{escape(text)}"
+      res = "\\question{#{number}}{#{escape(text)}}"
       @outio.write("\n" + line_break(res) + "\n\n")
     end
 

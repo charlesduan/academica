@@ -153,27 +153,14 @@ class TestBank
     def import(hash)
       raise "Wrong Randomizer type" unless hash['type'] == self.class.to_s
       hash['texts'].each do |string, val|
-        fix(string, val)
+        fix(string, val) if @texts.include?(string)
       end
     end
 
 
   end
-
-
-  #
-  # A randomizer for multiple choice items.
-  #
-  class ChoiceRandomizer < Randomizer
-    REGEXP = /\([A-Z]\)/
-    def regexp
-      return REGEXP
-    end
-
-    def replacements(texts, fixed)
-      return texts.shuffle
-    end
-  end
-
-
 end
+
+require 'academica/testbank/randomizer/choice'
+require 'academica/testbank/randomizer/name'
+require 'academica/testbank/randomizer/pronoun'

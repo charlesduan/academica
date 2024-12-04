@@ -6,7 +6,7 @@ class TestBank
     include Academica::FormatTools::TeX
 
     def format_question(number, text)
-      @outio.write("\n\\question{#{number}}\n")
+      @outio.write("\n\\question{#{number}}{\n")
     end
     def format_start_choices
     end
@@ -16,7 +16,7 @@ class TestBank
     end
     def format_answer(answer, explanation)
       @outio.write(line_break(
-        "\\textbf{#{escape(text_join(answer))}}. #{escape(explanation)}"
+        "\\textbf{#{escape(text_join(answer))}}. #{escape(explanation)}}"
       ) + "\n\n")
     end
 

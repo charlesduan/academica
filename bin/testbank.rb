@@ -9,8 +9,8 @@ class TestBankDispatcher < Dispatcher
 
   def initialize
     @options = {
-      :input_file => 'testbank.yaml',
-      :rand_file => 'rand_data.yaml',
+      :input_file => nil,
+      :rand_file => nil,
     }
   end
 
@@ -23,24 +23,50 @@ class TestBankDispatcher < Dispatcher
     end
   end
 
+  #
+  # Opens an appropriate IO stream, based on a given parameter, the command-line
+  # options, the test bank file options, or a default. If no block is given,
+  # returns the filename (or nil if none).
+  #
+  def choose_io(key, mode: 'r', default: nil, given: nil)
+    key = key.to_s
+    tbf = key == 'input' ? nil : testbank.files[key]
+    name = given || @options["#{key}_file"] || tbf
+    if !name && default
+      warn("No #{key} filename given; defaulting to #{default}")
+      name = default
+    end
+
+    return name unless block_given?
+
+    if name
+      return open(name, mode) { |io| yield(io) }
+    elsif mode == 'r'
+      return yield(STDIN)
+    else
+      return yield(STDOUT)
+    end
+  end
+
+
   def testbank
     return @testbank if defined? @testbank
 
     # Load the test bank
-    @testbank = TestBank.new(YAML.load_file(@options[:input_file]))
 
-    # If there is cached randomization data, use it
-    if @options[:rand_file] && File.exist?(@options[:rand_file])
-      @testbank.import(YAML.load_file(@options[:rand_file]))
-    else
-      # Otherwise, randomize the test bank and cache the randomization data
-      @testbank.randomize
-      if @options[:rand_file]
-        open(@options[:rand_file], 'w') do |io|
-          io.write(YAML.dump(@testbank.export))
-        end
-      end
+    infile = choose_io('input', default: 'testbank.yaml')
+    @testbank = TestBank.new(YAML.load_file(infile))
+
+    # If there is cached randomization data, use it. @testbank is defined by
+    # this point so it's okay to use choose_io (which reenters this method).
+    rfile = choose_io('rand', default: 'rand-data.yaml')
+    if rfile && File.exist?(rfile)
+      @testbank.import(YAML.load_file(rfile))
     end
+    # Randomize anything left
+    @testbank.randomize
+    # (Re)write the random cache file
+    open(rfile, 'w') { |io| io.write(YAML.dump(@testbank.export)) } if rfile
     return @testbank
   end
 
@@ -66,9 +92,11 @@ class TestBankDispatcher < Dispatcher
     "Generates an exam question file, based on randomizing the questions."
   end
 
-  def cmd_exam
-    f = TestBank::ExamFormatter.new(testbank, STDOUT, @options)
-    testbank.format(f)
+  def cmd_exam(outfile = nil)
+    choose_io('exam', mode: 'w', given: outfile) do |io|
+      f = TestBank::ExamFormatter.new(testbank, io, @options)
+      testbank.format(f)
+    end
   end
 
 
@@ -76,11 +104,12 @@ class TestBankDispatcher < Dispatcher
     "Generates an exam answer explanations file."
   end
 
-  def cmd_explanations
-    f = TestBank::ExplanationsFormatter.new(testbank, STDOUT, @options)
-    testbank.format(f)
+  def cmd_explanations(outfile = nil)
+    choose_io('explanations', mode: 'w', given: outfile) do |io|
+      f = TestBank::ExplanationsFormatter.new(testbank, io, @options)
+      testbank.format(f)
+    end
   end
-
 
 end
 
