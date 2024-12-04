@@ -79,6 +79,36 @@ class RandomizerTest < Minitest::Test
     assert_equal %w((A) (B)), [ @c.text_for('(A)'), @c.text_for('(B)') ].sort
   end
 
+  def test_choice_randomizer_export
+    @c = TestBank::ChoiceRandomizer.new
+    @c.match("(A)")
+    @c.match("(B)")
+    @c.match("(C)")
+    @c.fix('(C)')
+    @c.randomize
+    hash = @c.export
+    assert_equal @c.class.to_s, hash['type']
+    assert_kind_of Hash, hash['texts']
+    assert_equal '(C)', hash['texts']['(C)']
+    assert hash['texts'].include?('(A)')
+    assert hash['texts'].include?('(B)')
+  end
+
+  def test_choice_randomizer_import
+    @c = TestBank::ChoiceRandomizer.new
+    @c.match("(A)")
+    @c.match("(B)")
+    @c.match("(C)")
+    @c.import({
+      'type' => 'TestBank::ChoiceRandomizer',
+      'texts' => { '(A)' => '(B)', '(B)' => '(A)', '(C)' => '(C)' }
+    })
+
+    assert_equal('(B)', @c.text_for('(A)'))
+    assert_equal('(A)', @c.text_for('(B)'))
+    assert_equal('(C)', @c.text_for('(C)'))
+  end
+
   def test_randomizer_randomizes
     cr = TestBank::ChoiceRandomizer.new
     arr = ('A' .. 'Z').map { |l| "(#{l})" }

@@ -109,6 +109,7 @@ class QuestionTest < Minitest::Test
     b_count = 0
     100.times do
       q = TestBank::Question.new(@qinput)
+      q.randomize
       a_count += 1 if q.choice_letter('A') == '(A)'
       b_count += 1 if q.choice_letter('B') == '(A)'
       assert_equal '(C)', q.choice_letter('C')
