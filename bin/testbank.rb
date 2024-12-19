@@ -111,6 +111,17 @@ class TestBankDispatcher < Dispatcher
     end
   end
 
+  def help_key
+    "Generates an exam answer key file."
+  end
+
+  def cmd_key(outfile = nil)
+    choose_io('key', mode: 'w', given: outfile) do |io|
+      f = TestBank::KeyFormatter.new(testbank, io, @options)
+      testbank.format(f)
+    end
+  end
+
 end
 
 tbd = TestBankDispatcher.new()
