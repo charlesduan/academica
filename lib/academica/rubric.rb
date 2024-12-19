@@ -13,7 +13,7 @@ class Rubric
   include Enumerable
 
   set_description(<<~EOF)
-    A grading rubric for an test. A Rubric is a collection of Questions, each
+    A grading rubric for a test. A Rubric is a collection of Questions, each
     Question being built of multiple Issues. Additionally, a Rubric contains
     template specifications used for building Questions and Issues. The Rubric
     defines the expectations for Examination objects, which represent individual
