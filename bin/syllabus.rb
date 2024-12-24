@@ -95,15 +95,10 @@ class SyllabusDispatcher < Dispatcher
 
   def cmd_cal
     count = 0
-    syllabus.dates.each do |date, has_class, expl|
-      if has_class
-        count += 1
-        cstr = "Class %2d" % count
-      else
-        cstr = "NO CLASS"
-      end
-      explstr = expl ? " (#{expl})" : ""
-      puts "#{date.strftime("%b %e")}: #{cstr}#{explstr}"
+    syllabus.dates.each do |date|
+      count += 1
+      cstr = "Class %2d" % count
+      puts "#{date.strftime("%b %e")}: #{cstr}"
     end
 
   end

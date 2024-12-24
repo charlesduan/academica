@@ -9,7 +9,7 @@ class Syllabus
     include Academica::FormatTools::Plain
 
     def post_initialize
-      @verbose = @options[:verbose]
+      @verbose = @options['verbose']
     end
 
     def format_section(section)
@@ -22,8 +22,14 @@ class Syllabus
     end
 
     def format_noclass(date_range)
-      @outio.puts("\n#{text_date(date_range)}: NO CLASS -- " \
-                  "#{escape(date_range.explanation)}")
+      @outio.puts("\n")
+      @outio.puts(line_break(
+        "#{text_date(date_range)}: NO CLASS -- " \
+        "#{escape(date_range.explanation)}",
+        prefix: "  ", first_prefix: ""
+      ))
+
+
     end
 
     def format_due_date(date, assignment)
@@ -53,7 +59,7 @@ class Syllabus
         spaces = ' ' * (entry.level + 2)
         lead = entry.number ? "#{entry.number}." : '-'
         @outio.puts(line_break(
-          escape(entry.text), first_prefix: "#{spaces}#{lead}",
+          escape(entry.text), first_prefix: "#{spaces}#{lead} ",
           prefix: "#{spaces}#{' ' * lead.length}"
         ))
       end

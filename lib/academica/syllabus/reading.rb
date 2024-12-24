@@ -96,8 +96,6 @@ class Syllabus
     end
 
     def post_initialize
-      input_err("No Textbook found") unless get_book
-
       @texts = []
       @headers = []
 
@@ -128,7 +126,7 @@ class Syllabus
       else
         @the_book = get_syllabus.default_textbook
       end
-      raise "No book #@book found" unless @the_book
+      input_err("No book #@book found") unless @the_book
       return @the_book
     end
 
@@ -442,7 +440,7 @@ class Syllabus
     # start page, and the stop page or nil if there is only one page.
     #
     def page_description(singular: "page", plural: "pages", all: "all")
-      if all
+      if self.all
         return [ all, nil, nil ]
       elsif one_page?
         return [ singular, range_start.page, nil ]

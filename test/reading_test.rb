@@ -132,5 +132,17 @@ class ReadingTest < Minitest::Test
     assert s.books.values.any? { |b| b.name == "Web Book" }
   end
 
+  def test_default_book_in_reading
+    input = @syl_input.merge({
+      books: { textbook: @full_book_input },
+      classes: [ { classes: [
+        name: "Test Class",
+        readings: [ { start: "page 5", stop: "multiple pages" } ]
+      ] } ],
+    })
+    Syllabus.new(input, nil)
+    # This just makes sure that no error is thrown
+  end
+
 end
 

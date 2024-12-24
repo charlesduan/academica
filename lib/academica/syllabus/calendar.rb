@@ -6,6 +6,8 @@ require 'date'
 #
 class AcademicCalendar
 
+  TIME_RE = /\A(1?\d:\d\d)-(1?\d:\d\d) ([AP]M)\z/
+
   class DateRange
 
     include Structured
@@ -54,6 +56,18 @@ class AcademicCalendar
       optional: true
     )
 
+    element(:time, String, optional: true,
+            check: proc { |s| s =~ TIME_RE },
+            description: "The time range for class meetings")
+
+    def time_range
+      if @time
+        m = TIME_RE.match(@time)
+        return [ "#{m[1]} #{m[3]}", "#{m[2]} #{m[3]}" ]
+      else
+        return @parent.time_range
+      end
+    end
 
     #
     # Checks that the start and stop dates are a reasonable range.
@@ -101,6 +115,16 @@ class AcademicCalendar
     description: "End date of the semester",
     preproc: proc { |s| Date.parse(s) }
   );
+
+  element(:time, String, optional: true, default: "TBD",
+          check: proc { |s| s == "TBD" || s =~ TIME_RE },
+          description: "The time range for class meetings")
+
+  def time_range
+    raise "Syllabus does not specify class meeting times" if @time == 'TBD'
+    m = TIME_RE.match(@time)
+    return [ "#{m[1]} #{m[3]}", "#{m[2]} #{m[3]}" ]
+  end
 
   element(
     :days, [ String ],

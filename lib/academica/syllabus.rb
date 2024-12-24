@@ -11,8 +11,6 @@ class Syllabus
   include Enumerable
   include Structured
 
-  TIME_RE = /\A(1?\d:\d\d)-(1?\d:\d\d) ([AP]M)\z/
-
   set_description <<~EOF
     Represents the materials for a course being taught in an academic semester.
     The Syllabus object contains the dates of the academic calendar, the
@@ -28,13 +26,19 @@ class Syllabus
           description: "The room number or location of class meetings")
   element(:credits, String, optional: true, default: "TBD",
           description: "Number of credits for this course")
-  element(:time, String, optional: true, default: "TBD",
-          check: proc { |s| s == "TBD" || s =~ TIME_RE },
-          description: "The time range for class meetings")
 
   element(:books, { String => Textbook }, description: <<~EOF)
     The textbooks for the course, associated with nicknames for the books.
   EOF
+
+  def receive_books(books)
+    @books = books
+    # Find default textbook
+    defaults = @books.values.select { |tb| tb.default }
+    input_err("Too many default textbooks") if defaults.count > 1
+    @default_textbook = defaults[0]
+  end
+
 
   element(
     :due_dates, { Date => String }, optional: true, default: [].freeze,
@@ -61,13 +65,6 @@ class Syllabus
     Specification of the academic calendar for the course.
   EOF
 
-  element(:outfile, { String => String }, optional: true, default: {}.freeze,
-          description: <<~EOF)
-    A map of output files for each output formatter. The keys should be
-    identifiers for each formatter. If no file is given, then output will be
-    written to STDOUT.
-  EOF
-
   element(:format_options, { String => Hash }, optional: true,
           default: {}.freeze, description: <<~EOF)
     A map of options for each output formatter. The keys should be identifiers
@@ -86,11 +83,6 @@ class Syllabus
 
   def post_initialize
     @warning = nil
-
-    # Find default textbook
-    defaults = @books.values.select { |tb| tb.default }
-    input_err("Too many default textbooks") if defaults.count > 1
-    @default_textbook = defaults[0]
 
     # Assign sequence numbers and dates to classes
     all_classes = to_a
@@ -113,6 +105,9 @@ class Syllabus
 
   attr_reader :default_textbook
 
+  def time
+    return dates.time
+  end
 
   #
   # Enumerates over the classes (not the class groups).
@@ -134,9 +129,7 @@ class Syllabus
   # of the course.
   #
   def time_range
-    raise "Syllabus does not specify class meeting times" if @time == 'TBD'
-    m = TIME_RE.match(@time)
-    return [ "#{m[1]} #{m[3]}", "#{m[2]} #{m[3]}" ]
+    return @calendar.time_range
   end
 
   #
