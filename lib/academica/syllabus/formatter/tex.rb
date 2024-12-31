@@ -115,12 +115,17 @@ class Syllabus
       end
     end
 
-    def format_class_header(date, one_class)
-      @outio.puts "\n\\Class{#{text_date(date)}} #{escape(one_class.name)}"
+    def format_class_header(date, class_day)
+      @outio.puts "\n\\Class{#{text_date(date)}} #{escape(class_day.name)}"
+    end
+
+    def format_special_class_header(date, class_day, special_range)
+      @outio.puts "\n\\Class{#{text_date(date)}} \\textbf{ADDED DAY}: " \
+        "#{escape(class_day.name)}. #{special_range.explanation}"
     end
 
     def format_noclass(date_range)
-      @outio.puts "\n\\NoClass{#{text_date(date_range)}} " \
+      @outio.puts "\n\\NoClass{#{text_date(date_range, range_sep: '--')}} " \
         "#{escape(date_range.explanation)}"
     end
 

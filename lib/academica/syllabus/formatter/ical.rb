@@ -13,7 +13,6 @@ class Syllabus
       @calendar.append_custom_property("X-WR-CALNAME", @syllabus.name)
       @calendar.publish
 
-      @start_time, @stop_time = @syllabus.time_range
       @suffix = "[#{@syllabus.number}]"
 
       @tzid = @options['timezone']
@@ -31,15 +30,32 @@ class Syllabus
 
     def format_class_header(date, one_class)
       @current_event = @calendar.event
+      start, stop = @syllabus.time_range
       @current_event.dtstart = Icalendar::Values::DateTime.new(
-        Time.parse(@start_time, date), 'tzid' => @tzid
+        Time.parse(start, date), 'tzid' => @tzid
       )
       @current_event.dtend = Icalendar::Values::DateTime.new(
-        Time.parse(@stop_time, date), 'tzid' => @tzid
+        Time.parse(stop, date), 'tzid' => @tzid
       )
       @current_event.summary = "#{escape(one_class.name)} #{@suffix}"
 
       @event_items = []
+    end
+
+    def format_special_class_header(date, class_day, special_range)
+      @current_event = @calendar.event
+      start, stop = special_range.time_range
+      @current_event.dtstart = Icalendar::Values::DateTime.new(
+        Time.parse(start, date), 'tzid' => @tzid
+      )
+      @current_event.dtend = Icalendar::Values::DateTime.new(
+        Time.parse(stop, date), 'tzid' => @tzid
+      )
+      @current_event.summary = "#{escape(class_day.name)} #{@suffix}"
+
+      @event_items = [
+        escape("Added day: #{special_range.explanation}")
+      ]
     end
 
     def format_due_date(date, assignment)
@@ -68,13 +84,18 @@ class Syllabus
         res << ", #{escape(pagetext)} #{start_page}"
         res << "-#{stop_page}" if stop_page
       end
+      res << ", " << escape(reading.summarize) if reading.summarize
       res << "."
       res << " #{escape(reading.note)}." if reading.note
       @event_items.push(res)
     end
 
     def format_book_name(name, url, full = true)
-      return "#{escape(name)}, #{url}"
+      if url
+        return "#{escape(name)}, #{url}"
+      else
+        return "#{escape(name)}"
+      end
     end
 
     def format_assignments(assignments)

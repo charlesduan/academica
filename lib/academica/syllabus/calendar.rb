@@ -173,6 +173,14 @@ class AcademicCalendar
     end
   end
 
+  #
+  # If the given date is a special date, returns the corresponding DateRange
+  # object with information on the special date. Otherwise returns nil.
+  #
+  def special_date(date)
+    return @add.find { |range| range.include?(date) }
+  end
+
 
   #
   # Tests whether a given date falls within the course's calendar. This requires

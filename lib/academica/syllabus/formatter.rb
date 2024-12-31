@@ -156,6 +156,14 @@ class Syllabus
     def post_output
     end
 
+    #
+    # Override this method for handling special class days (those that are off
+    # cycle).
+    #
+    def format_special_class_header(date, class_day, message)
+      format_class_header(date, class_day)
+    end
+
 
   end
 end

@@ -129,7 +129,7 @@ class Syllabus
   # of the course.
   #
   def time_range
-    return @calendar.time_range
+    return @dates.time_range
   end
 
   #
@@ -174,7 +174,9 @@ class Syllabus
     }
 
     items.concat(self.map { |cday|
-      [ cday.date, 4, proc { format_one_class(formatter, cday) } ]
+      [ cday.date, 4, proc {
+        format_one_class(formatter, cday, @dates.special_date(cday.date))
+      } ]
     })
 
     @classes.map { |cgroup|
@@ -199,8 +201,12 @@ class Syllabus
   #
   # Formats a single class.
   #
-  def format_one_class(formatter, cday)
-    formatter.format_class_header(cday.date, cday)
+  def format_one_class(formatter, cday, special_range)
+    if special_range
+      formatter.format_special_class_header(cday.date, cday, special_range)
+    else
+      formatter.format_class_header(cday.date, cday)
+    end
     cday.readings.each do |reading|
       # TODO: The below variables should be updated based on the
       # coursepack.

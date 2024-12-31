@@ -130,7 +130,7 @@ class FormatterTest < Minitest::Test
     setup_syllabus_inputs
     @syllabus ||= Syllabus.new(@syl_input.update(
       :books => @book_input,
-      :time => '10:00-11:00 AM',
+      :dates => @syl_input[:dates].update(:time => '10:00-11:00 AM'),
     ))
 
     formatter_battery(Syllabus::IcalFormatter, {
