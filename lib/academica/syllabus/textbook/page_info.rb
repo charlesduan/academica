@@ -4,14 +4,67 @@ class Textbook
 
   class PageInfo
 
+    #
+    # A data structure that maps the whole numbers (starting from zero) to a
+    # nonconsecutive sequence. The zero-indexed side of the map is referred to
+    # below as the "count," and the sequence's non-sequential values are called
+    # the "sequence."
+    #
+    # The sequence is stored as a series of non-overlapping ranges of integers,
+    # indicating the consecutive values in the sequence.
+    #
+    class Sequence
+      def initialize
+        @ranges = [ 1.. ]
+      end
+
+      #
+      # Given a count, returns the corresponding element of this sequence. If
+      # the number is outside the range, raises an error.
+      #
+      def count2seq(count)
+        c = count
+        @ranges.each do |range|
+          return c + range.begin if c < range.size
+          c -= range.size
+        end
+        raise "Count #{count} is too large for sequence"
+      end
+
+      #
+      # Given a sequence number, returns the corresponding count number. If the
+      # sequence number is not valid, raises an error.
+      #
+      def seq2count(seq)
+        tot = 0
+        raise "Sequence number #{seq} too small" if seq < @ranges.first.begin
+        @ranges.each do |range|
+          return tot + seq - range.begin if range.include?(seq)
+          tot += range.size
+        end
+        raise "Sequence number #{seq} too large"
+      end
+
+
+      #
+      # Omits a range from the sequence, inclusive of the elements given.
+      #
+      def omit(start, stop)
+        new_range = []
+        @ranges.each do |range|
+          if range.begin > stop
+            # This range is after the omit region
+            new_range.push(range)
+          elsif range.end && range.end < start
+            # This range is before the omit region
+            new_range.push(range)
+          elsif range.begin 
+    end
+
     include Structured
 
     set_description <<~EOF
       Manages conversion between page and sheet numbers.
-      
-      Currently this does a simple one-to-one translation, assuming that page
-      numbers increment consecutively. Future iterations could allow for
-      multi-volume works or non-consecutive pagination.
     EOF
 
     element(
@@ -25,6 +78,15 @@ class Textbook
     element(
       :last_page, Integer, optional: true,
       description: "Page number of the last numbered page",
+    )
+    element(
+      :skip_sheets, { Integer => Integer }, optional: true, default: {}.freeze,
+      description: <<~EOF
+        Ranges of sheets to skip in page counting. The pages are expected to be
+        consecutive after discounting these ranges. Ranges are specified with
+        the starting sheet number to skip being the key and the ending sheet
+        number being the value.
+      EOF
     )
 
     #
