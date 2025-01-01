@@ -47,18 +47,61 @@ class Textbook
 
 
       #
-      # Omits a range from the sequence, inclusive of the elements given.
+      # Omits a range from the sequence, inclusive of the elements given. stop
+      # may be nil, indicating that all values starting from start are to be
+      # omitted.
       #
       def omit(start, stop)
-        new_range = []
+        raise "Invalid omission range #{start}..#{stop}" if stop && start > stop
+        new_ranges = []
         @ranges.each do |range|
-          if range.begin > stop
+          if stop && range.begin > stop
             # This range is after the omit region
-            new_range.push(range)
+            new_ranges.push(range)
           elsif range.end && range.end < start
             # This range is before the omit region
-            new_range.push(range)
-          elsif range.begin 
+            new_ranges.push(range)
+          else
+            # The omit region cuts off at least some portion of the range.
+            # Determine what parts of the range to keep, which will be at the
+            # start of the range and/or at the end.
+            if range.begin < start
+              new_ranges.push(Range.new(range.begin, start - 1))
+            end
+
+            # The tail end is appended if:
+            # - The end of the omission is not infinity, and
+            #   - either the end of the range is infinity, or
+            #   - the end of the range exceeds the end of the omission.
+            if stop && (range.end.nil? || range.end > stop)
+              new_ranges.push(Range.new(stop + 1, range.end))
+            end
+          end
+        end
+        @ranges = new_ranges
+      end
+
+      #
+      # Returns the final value of the sequence. It is an error to call this
+      # method if the sequence is infinite.
+      #
+      def seq_end
+        return @ranges.last.last
+      end
+
+      #
+      # Returns true if the given sequence number is within this sequence.
+      #
+      def include?(seq_num)
+        @ranges.any? { |r| r.include?(seq_num) }
+      end
+
+      #
+      # Returns true if the given sequence goes to infinity.
+      #
+      def infinite?
+        return @ranges.last.end.nil?
+      end
     end
 
     include Structured
@@ -67,18 +110,38 @@ class Textbook
       Manages conversion between page and sheet numbers.
     EOF
 
+    def pre_initialize
+      @page_seq = Sequence.new
+      @sheet_seq = Sequence.new
+    end
+
     element(
       :start_page, Integer, optional: true, default: 1,
       description: "Page number of the first numbered page",
     )
+
+    def receive_start_page(pg)
+      @page_seq.omit(1, pg - 1) if pg > 1
+    end
+
     element(
       :start_sheet, Integer, optional: true, default: 1,
       description: "Sheet number corresponding to the start_page",
     )
+
+    def receive_start_sheet(sheet)
+      @sheet_seq.omit(1, sheet - 1) if sheet > 1
+    end
+
     element(
       :last_page, Integer, optional: true,
       description: "Page number of the last numbered page",
     )
+
+    def receive_last_page(page)
+      @page_seq.omit(page + 1, nil)
+    end
+
     element(
       :skip_sheets, { Integer => Integer }, optional: true, default: {}.freeze,
       description: <<~EOF
@@ -89,17 +152,21 @@ class Textbook
       EOF
     )
 
+    def receive_skip_sheets(hash)
+      hash.each do |start, stop|
+        @sheet_seq.omit(start, stop)
+      end
+    end
+
     #
     # Returns the sheet number for a given page number.
     #
     def sheet_num_for(page_num)
-      raise "Invalid page number" if page_num < @start_page
-      return page_num - @start_page + @start_sheet
+      return @sheet_seq.count2seq(@page_seq.seq2count(page_num))
     end
 
     def page_num_for(sheet_num)
-      raise "Invalid sheet number" if sheet_num < @start_sheet
-      return sheet_num - @start_sheet + @start_page
+      return @page_seq.count2seq(@sheet_seq.seq2count(sheet_num))
     end
 
     #
@@ -107,7 +174,7 @@ class Textbook
     # that is `offset` pages away.
     #
     def page_offset(page, offset)
-      return page + offset
+      return @page_seq.count2seq(@page_seq.seq2count(page) + offset)
     end
 
     #
@@ -120,7 +187,7 @@ class Textbook
       stop_page = stop && stop.is_a?(PagePos) ? stop.page : stop
 
       @parent.each_sheet do |sheet, sheet_num|
-        next if sheet_num < @start_sheet
+        next unless @sheet_seq.include?(sheet_num)
 
         #
         # Test the page for being within range.
@@ -150,8 +217,10 @@ class Textbook
     # Returns the last page.
     #
     def last_page
-      return @last_page if defined?(@last_page)
-      return page_num_for(@parent.num_sheets)
+      if @page_seq.infinite?
+        @page_seq.omit(page_num_for(@parent.num_sheets) + 1, nil)
+      end
+      return @page_seq.seq_end
     end
 
     #
