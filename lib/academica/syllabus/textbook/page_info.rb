@@ -124,6 +124,10 @@ class Textbook
       @page_seq.omit(1, pg - 1) if pg > 1
     end
 
+    def start_page
+      return @page_seq.count2seq(0)
+    end
+
     element(
       :start_sheet, Integer, optional: true, default: 1,
       description: "Sheet number corresponding to the start_page",
