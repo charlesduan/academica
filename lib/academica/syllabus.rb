@@ -201,7 +201,7 @@ class Syllabus
   #
   # Formats a single class.
   #
-  def format_one_class(formatter, cday, special_range)
+  def format_one_class(formatter, cday, special_range = nil)
     if special_range
       formatter.format_special_class_header(cday.date, cday, special_range)
     else

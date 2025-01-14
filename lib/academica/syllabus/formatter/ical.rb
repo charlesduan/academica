@@ -17,9 +17,14 @@ class Syllabus
 
       @tzid = @options['timezone']
       unless @tzid
-        warn("No timezone option specified; defaulting to America/New York")
-        @tzid = "America/New York"
+        warn("No timezone option specified; defaulting to America/New_York")
+        @tzid = "America/New_York"
       end
+
+      tz = TZInfo::Timezone.get(@tzid)
+      raise "Timezone #@tzid not known" unless tz
+      @calendar.add_timezone(tz.ical_timezone(DateTime.now))
+      
     end
 
     def post_output
