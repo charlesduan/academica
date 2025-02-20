@@ -35,7 +35,11 @@ class SyllabusDispatcher < Dispatcher
   def format(fmt_class, tag, arg = nil)
     tag, cday = tag.to_s, nil
     if arg
-      arg = Date.parse(arg) rescue arg.to_i
+      if arg =~ /\A\d+\z/
+        arg = arg.to_i
+      else
+        arg = Date.parse(arg)
+      end
       cday = syllabus.find_class(arg)
       raise "No class #{arg} found" unless cday
     end
