@@ -31,7 +31,7 @@ class TestBankDispatcher < Dispatcher
   def choose_io(key, mode: 'r', default: nil, given: nil)
     key = key.to_s
     tbf = key == 'input' ? nil : testbank.files[key]
-    name = given || @options["#{key}_file"] || tbf
+    name = given || @options["#{key}_file".to_sym] || tbf
     if !name && default
       warn("No #{key} filename given; defaulting to #{default}")
       name = default
