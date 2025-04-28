@@ -7,7 +7,7 @@ class TestBank
   #
   class PronounRandomizer < Randomizer
 
-    REGEXP = /\b(?:he|him|his|she|her|hers)\b/
+    REGEXP = /\b(?:he|him|his|she|her|hers|himself|herself)\b/
     def regexp
       return REGEXP
     end

@@ -77,14 +77,27 @@ class TestBankDispatcher < Dispatcher
   end
   def cmd_stats
     puts "#{testbank.questions.count} questions found"
-    tags = Hash.new(0)
+    tags = Hash.new
     testbank.questions.each do |q|
+      cur_hash = tags
       q.tags.each do |t|
-        tags[t] += 1
+        cur_hash[t] ||= Hash.new
+        cur_hash = cur_hash[t]
       end
+      cur_hash[:count] ||= 0
+      cur_hash[:count] += 1
     end
-    tags.sort_by { |t, c| [ -c, t ] }.each do |tag, count|
-      printf("  % 2d: %s\n", count, tag)
+    show_hash(tags, 0)
+  end
+
+  def count_hash(hash)
+    return hash.map { |k, v| k == :count ? v : count_hash(v) }.sum
+  end
+  def show_hash(hash, indent)
+    hash.each do |k, v|
+      next if k == :count
+      puts("%s%2d: %s" % [ ' ' * indent * 3, count_hash(v), k ])
+      show_hash(v, indent + 1)
     end
   end
 
