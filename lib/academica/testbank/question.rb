@@ -134,6 +134,13 @@ class TestBank
       EOF
     )
 
+    element(
+      :reserve, :boolean, optional: true, default: false,
+      description: <<~EOF
+        Reserve this question and do not include it in a generated exam.
+      EOF
+    )
+
     def post_initialize
       # Check that the answer contains a choice if and only if choices are
       # given.
@@ -223,6 +230,7 @@ class TestBank
     # Exports a question, primarily by exporting its randomizers.
     #
     def export
+      return { 'reserve' => true } if reserve
       return {
         'choice_randomizer' => @cr.export,
         'randomizers' => @randomizers.map(&:export),
@@ -232,6 +240,11 @@ class TestBank
     end
 
     def import(hash)
+      if (reserve && !hash['reserve']) || (!reserve && hash['reserve'])
+        raise "Inconsistent reserve flag"
+      end
+      return if reserve
+
       if @original_number && @original_number != hash['original_number']
         raise 'Inconsistent original number'
       end

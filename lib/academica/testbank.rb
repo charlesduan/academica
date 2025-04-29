@@ -85,7 +85,9 @@ class TestBank
       # Group questions together if they use must_follow. Then shuffle the
       # groups
       @random_map = (0...@questions.count).inject([]) { |memo, qnum|
-        if @questions[qnum].must_follow
+        if @questions[qnum].reserve
+          # Ignore this question
+        elsif @questions[qnum].must_follow
           memo.last.push(qnum)
         elsif @questions[qnum].position
           positioned.push(qnum)
@@ -156,9 +158,32 @@ class TestBank
   end
 
   #
-  # Imports randomization data into this test bank.
+  # Imports randomization data into this test bank. Returns true if the import
+  # was successful, and false otherwise.
   #
   def import(hash)
+    #
+    # Check the consistency of the random map
+    #
+    valid_qnums = (0...@questions.count).reject { |qnum|
+      @questions[qnum].reserve
+    }
+    unless valid_qnums == hash['map'].sort
+      return false
+    end
+    #
+    # Check the consistency of the questions data
+    #
+    unless hash['questions'].count == @questions.count
+      return false
+    end
+    @questions.zip(hash['questions']).each do |q, data|
+      return false unless !!q.reserve == !!data['reserve']
+    end
+
+    #
+    # Now actually set the values
+    #
     @random_map = hash['map']
     @questions.zip(hash['questions']).each do |q, data|
       q.import(data)
@@ -168,6 +193,7 @@ class TestBank
         raise "Inconsistent question number"
       end
     end
+    return true
   end
 
 end

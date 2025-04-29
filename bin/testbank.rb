@@ -61,7 +61,9 @@ class TestBankDispatcher < Dispatcher
     # this point so it's okay to use choose_io (which reenters this method).
     rfile = choose_io('rand', default: 'rand-data.yaml')
     if rfile && File.exist?(rfile)
-      @testbank.import(YAML.load_file(rfile))
+      unless @testbank.import(YAML.load_file(rfile))
+        warn("Inconsistent random data file; re-randomizing")
+      end
     end
     # Randomize anything left
     @testbank.randomize
@@ -76,16 +78,25 @@ class TestBankDispatcher < Dispatcher
     "Provides general statistics on the test bank's questions."
   end
   def cmd_stats
-    puts "#{testbank.questions.count} questions found"
+    reserved, active = testbank.questions.partition(&:reserve)
+    puts("#{active.count} questions + #{reserved.count} reserved")
+    show_stats(active)
+
+    unless reserved.empty?
+      puts("\nReserved questions:\n")
+      show_stats(reserved)
+    end
+  end
+
+  def show_stats(qs)
     tags = Hash.new
-    testbank.questions.each do |q|
+    qs.each do |q|
       cur_hash = tags
       q.tags.each do |t|
         cur_hash[t] ||= Hash.new
         cur_hash = cur_hash[t]
       end
-      cur_hash[:count] ||= 0
-      cur_hash[:count] += 1
+      cur_hash[:count] = (cur_hash[:count] || 0) + 1
     end
     show_hash(tags, 0)
   end
