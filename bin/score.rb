@@ -63,36 +63,82 @@ class ExamDispatcher < Dispatcher
 
   add_structured_commands
 
-  def cat_flags; "1. Marking Papers" end
-  def help_flags
+  def cat_issues; "1. Marking Papers" end
+  def help_issues
     return <<~EOF
-      Summarizes the issue flags in the exams.
+      Summarizes the issue tags in the exams.
+
+      If a pattern is given, returns only those issues matching the pattern. If
+      only one issue matches, then more specific statistics are provided for
+      that issue.
     EOF
   end
-  def cmd_flags
-    puts "#{exams.count} exam papers"
-
+  def cmd_issues(pattern = nil)
     issues = [].concat(*exams.map { |exam_paper|
       exam_paper.to_a
     }).group_by { |flag_set| flag_set.issue }.sort_by { |i, a| -a.count }
 
-    issues.each do |issue, flag_sets|
-      puts "#{issue}: #{flag_sets.count}/#{exams.count} exams"
+    if pattern
+      r = Regexp.new(pattern)
+      issues = issues.select { |issue, flag_sets| issue =~ r }
+    end
+
+    case issues.count
+    when 0
+      warn("No matching issues found")
+    when 1
+      issue, flag_sets = issues.first
       types = flag_sets.group_by(&:type).transform_values(&:count)
+      puts "#{issue}: #{flag_sets.count}/#{exams.count} exams"
       puts "  #{types.sort.map { |t, c| "#{t} #{c}" }.join(", ")}"
 
       specials = %w(b t).map { |f|
         "#{f} #{flag_sets.count { |fs| fs.include?(f) }}"
       }
       puts "  #{specials.join(", ")}"
+    else
+      length = issues.map { |issue, flag_sets| issue.length }.max
+
+      issues.each do |issue, flag_sets|
+        puts("%-#{length}s %2d/%2d" % [ issue, flag_sets.count, exams.count ])
+      end
     end
   end
+
+
+
+
+  def cat_progress; "1. Marking Papers" end
+  def help_progress
+    return "Displays progress in grading (i.e., number of unmarked exams)."
+  end
+  def cmd_progress
+
+    ungraded_exams = exams.select { |exam| exam.all_issues.count == 0 }
+    puts "#{ungraded_exams.count}/#{exams.count} exams remaining to grade"
+
+    pct = 100 - 100.0 * ungraded_exams.count / exams.count
+    puts("%.1f%% complete" % pct)
+
+    unless ungraded_exams.empty?
+      puts "Next exam: #{ungraded_exams.map(&:exam_id).min}"
+    end
+  end
+
+
+
+
 
   def cat_rubric; "1. Marking Papers" end
   def help_rubric; return "Produces a summary of the point rubric." end
   def cmd_rubric
     puts(YAML.dump(rubric.summary))
   end
+
+
+
+
+
 
   def cat_check; "1. Marking Papers" end
   def help_check
