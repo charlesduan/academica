@@ -42,6 +42,11 @@ class Rubric
         res
       }.partition { |i| i >= 0 }.map(&:sum).map(&:abs)
 
+      if add > @max
+        @last_explanation << "#{add}=>#@max "
+        add = @max
+      end
+
       if sub > @max_sub
         @last_explanation << "-#{sub}=>-#@max_sub "
         sub = @max_sub
@@ -52,10 +57,7 @@ class Rubric
         add -= sub
       end
 
-      if add > @max
-        @last_explanation << "#{add}=>#@max "
-        add = @max
-      elsif add < 0
+      if add < 0
         @last_explanation << "#{add}=>0 "
         add = 0
       end

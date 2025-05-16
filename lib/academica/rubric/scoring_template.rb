@@ -60,20 +60,25 @@ class Rubric
         end
       end
 
+      # Cap the additions and subtractions
+      if add > @max
+        @last_explanation << "#{add}=>#@max "
+        add = @max
+      end
+
       if sub > @max_sub
         @last_explanation << "-#{sub}=>-#@max_sub "
         sub = @max_sub
       end
 
+      # Apply the subtractions
       if sub > 0
         @last_explanation << "#{add}-#{sub}=>#{add - sub} "
         add -= sub
       end
 
-      if add > @max
-        @last_explanation << "#{add}=>#@max "
-        add = @max
-      elsif add < 0
+      # Minimum of 0 points awarded
+      if add < 0
         @last_explanation << "#{add}=>0 "
         add = 0
       end
