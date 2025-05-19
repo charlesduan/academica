@@ -153,7 +153,7 @@ class Rubric
     # @sub_flags A list of flags for all the sub-issues associated with this
     # issue.
     #
-    def convert(flag_set, exp_type, sub_flags = [])
+    def convert(flag_set, exp_type, sub_flags = [], note)
       @last_explanation = ''
       return flag_set if flag_set.type == exp_type
       conversion = "#{flag_set.type}=>#{exp_type}"
@@ -173,6 +173,7 @@ class Rubric
         raise "Cannot convert #{conversion} for #{flag_set}; do it manually"
       end
       @last_explanation << " =#{res.flags.join('')}"
+      note << @last_explanation << "\n"
       return res
     end
 

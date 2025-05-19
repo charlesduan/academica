@@ -12,13 +12,18 @@ class Rubric
 
     def pre_initialize
       @issues = {}
+      @groups = {}
     end
     attr_reader :issues
 
     def total_points
-      @issues.values.sum { |issue|
-        issue.extra ? 0 : issue.max
+      indiv = @issues.values.sum { |issue|
+        (issue.extra || issue.group) ? 0 : issue.max
       }
+      groups = @groups.values.sum { |group|
+        group.max
+      }
+      return indiv + groups
     end
 
     def receive_any(element, val)
@@ -64,6 +69,35 @@ class Rubric
     end
     def [](issue)
       return @issues[issue]
+    end
+
+    #
+    # Adds an issue as a member of a named group. An IssueGroup object is
+    # created as needed, and returned.
+    #
+    def add_group_member(issue, group_name)
+      issue_group = @groups[group_name] ||= IssueGroup.new(group_name)
+      issue_group.add(issue)
+      return issue_group
+    end
+
+    def summary
+      res = issues.select { |key, issue|
+        issue.max > 0 && !issue.group
+      }.transform_values { |issue|
+        "#{issue.max}#{issue.extra ? ' (extra)' : ''}"
+      }
+      @groups.each do |name, group|
+        res[name] = {
+          'group-max' => group.max,
+          'issues' => group.issues.map(&:name),
+        }
+      end
+      return res
+    end
+
+    def inspect
+      "#<#{self.class} #@name>"
     end
 
   end

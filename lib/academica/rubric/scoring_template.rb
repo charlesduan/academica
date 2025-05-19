@@ -44,9 +44,9 @@ class Rubric
     #
     # Scores a list of flags, given as an Enumerable.
     #
-    def score(flags)
+    def score(flags, note)
       if @max == 0
-        @last_explanation = "0 pts"
+        note << "0 pts\n"
         return 0
       end
       add, sub = 0, 0
@@ -84,6 +84,7 @@ class Rubric
       end
 
       @last_explanation << "=#{add}"
+      note << @last_explanation << "\n"
       return add
     end
 

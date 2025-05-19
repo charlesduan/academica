@@ -15,9 +15,14 @@ class Rubric
 
     element :file, String, description: <<~EOF
       The file with multiple choice answers. The file should be a tab-delimited
-      table with the headings "ID Number" or "Student Name" to identify each
-      student, and "Q [number]" for each question. A row where the name/ID
-      number is "Key" is used as the answer key.
+      table with the headings "ID Number", "Exam ID", or "Student Name" to
+      identify each student, and "Q [number]" for each question. A row where the
+      name/ID number is "Key" is used as the answer key.
+    EOF
+
+    element :answer_key, String, optional: true, description: <<~EOF
+      A separate file with the answer key, which should be tab-delimited
+      consistent with the output of testbank.rb key.
     EOF
 
     #
@@ -26,7 +31,6 @@ class Rubric
     #
     def receive_file(file)
       @file = file
-      @key = nil
       @responses = {}
 
       open(file) do |io|
@@ -66,6 +70,13 @@ class Rubric
       return head.downcase.strip.gsub(' ', '_')
     end
 
+    #
+    # Reads a line read from the multiple choice file. line is the line text,
+    # name_pos is the position of the ID field, and question_pos is a hash
+    # mapping position numbers to question names. The result is a two-element
+    # array, the first being the ID number and the second being a hash mapping
+    # question names to answer choices.
+    #
     def process_line(line, name_pos, question_pos)
       line_elts = line.chomp.split(/\t/).map(&:strip)
       name = nil
@@ -82,6 +93,18 @@ class Rubric
         answers[qname] = line_elts[pos]
       end
       return [ name, answers ]
+    end
+
+    def receive_answer_key(filename)
+      key = {}
+      open(filename) do |io|
+        io.each do |line|
+          qnum, answer = line.split(/\s+/)
+          qnum = "q_#{qnum}"
+          key[qnum] = answer
+        end
+      end
+      @key = key
     end
 
     element(:points_per_question, Numeric, default: 1,

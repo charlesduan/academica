@@ -3,6 +3,7 @@ require 'structured'
 require 'academica/rubric/scoring_template'
 require 'academica/rubric/quality_template'
 require 'academica/rubric/issue'
+require 'academica/rubric/issue_group'
 require 'academica/rubric/question'
 require 'academica/rubric/type_translator'
 require 'academica/rubric/multiple_choice'
@@ -150,11 +151,7 @@ class Rubric
 
 
   def summary
-    res = @questions.transform_values { |question|
-      question.issues.transform_values { |issue|
-        "#{issue.max}#{issue.extra ? ' (extra)' : ''}"
-      }
-    }
+    res = @questions.transform_values { |question| question.summary }
     res['quality'] = @quality.transform_values { |qt| qt.max.to_s }
     return res
   end
@@ -202,34 +199,7 @@ class Rubric
   end
 
   def score_issue(issue, exam_paper)
-    return if issue.manually_scored?
-
-    flag_set = exam_paper[issue.name]
-    unless flag_set
-      exam_paper.score_data.add_score(issue, 0, 'not found')
-      return
-    end
-
-    flag_set.considered = true
-    if issue.max == 0
-      exam_paper.score_data.add_score(issue, 0, 'no points')
-      return
-    end
-
-    sub_flags = exam_paper.sub_issues(issue.name).map { |subissue|
-      exam_paper.flags_for(subissue)
-    }
-
-    note = ''
-    conv_flags = @translations.convert(flag_set, issue.type, sub_flags)
-
-    @quality.values.each { |qt| qt.update(conv_flags) }
-
-    note << @translations.last_explanation << "\n"
-    score = issue.score(conv_flags)
-    note << issue.last_explanation << "\n"
-
-    exam_paper.score_data.add_score(issue, score, note.strip)
+    return issue.score(exam_paper)
   end
 
   def check_exam(exam_paper)
@@ -244,11 +214,11 @@ class Rubric
           "unexpected issue #{flag_set.issue}"
       end
       next unless flag_set.type == 'X'
-      subs = exam_paper.sub_issues(flag_set.issue)
-      unless issue.sub_issues
+      subs = exam_paper.subissues(flag_set.issue)
+      unless issue.subissues
         raise IssueError, "No sub issues for #{flag_set.issue} in specification"
       end
-      exp_subs = issue.sub_issues
+      exp_subs = issue.subissues
       unless (subs - exp_subs).empty?
         raise IssueError, "For exam #{flag_set.exam_id}, " \
           "unexpected subissue #{(subs - exp_subs).join(', ')}"

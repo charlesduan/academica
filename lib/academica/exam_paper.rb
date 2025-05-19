@@ -20,6 +20,7 @@ class ExamPaper
   # Adds a set of flags for an issue identified on this exam paper.
   #
   def add(issue, flags)
+    raise TypeError, "Issue name must be a String" unless issue.is_a?(String)
     @issues[issue] ||= FlagSet.new(@exam_id, issue)
     @issues[issue].add(flags)
   end
@@ -63,11 +64,8 @@ class ExamPaper
   #
   # Returns the flags for the given issue.
   #
-  def flags_for(issue)
-    return @issues[issue]
-  end
-
   def [](issue)
+    raise TypeError, "Issue name must be a String" unless issue.is_a?(String)
     return @issues[issue]
   end
 
@@ -81,9 +79,16 @@ class ExamPaper
   #
   # Returns all the sub-issues for the given issue, as a list of strings.
   #
-  def sub_issues(issue)
+  def subissues(issue)
     dotted = "#{issue}."
     return all_issues.select { |s| s.start_with?(dotted) }
+  end
+
+  #
+  # Returns all flag sets for the subissues of a given issue.
+  #
+  def subflags(issue)
+    return subissues(issue).map { |si| @issues[si] }.compact
   end
 
 

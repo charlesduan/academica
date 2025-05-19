@@ -11,9 +11,8 @@ class Rubric
     element :template, String, optional: true,
       description: "The name of the scoring template"
     element :max, Numeric, optional: true, description: <<~EOF
-      The maximum points awardable for this issue. This parameter should only be
-      used if template is omitted, indicating that this issue is not scored
-      automatically from flags.
+      The maximum points awardable for this issue. This should only be used for
+      internal purposes.
     EOF
     element(
       :extra, :boolean, optional: true, default: false,
@@ -27,6 +26,21 @@ class Rubric
       was flagged (even if that is no flags).
     EOF
 
+    element(
+      :group, String, optional: true, description: <<~EOF
+        Name of an issue group to associate with this issue. Issues within an
+        issue group are capped in total score. By default, the cap is the
+        maximum score of the first issue added to the group.
+      EOF
+    )
+
+    element(
+      :groupmax, Numeric, optional: true, description: <<~EOF
+        Maximum score for the issue group. This need only be specified once, for
+        any issue in the group.
+      EOF
+    )
+
     def name
       return @key
     end
@@ -39,7 +53,7 @@ class Rubric
       question.rubric
     end
 
-    def sub_issues
+    def subissues
       return nil unless @sub
       return @sub.map { |si| "#@key.#{si}" }
     end
@@ -49,23 +63,60 @@ class Rubric
     end
 
     def post_initialize
-      input_err("Invalid parent") unless parent.is_a?(Question)
+      input_err("Invalid parent") unless question.is_a?(Question)
       input_err("Invalid grandparent") unless rubric.is_a?(Rubric)
       if defined?(@max)
         input_err("Can't have template and max") if defined?(@template)
       else
         input_err("Invalid template") unless template.is_a?(ScoringTemplate)
       end
+
+      if defined?(@group)
+        @issue_group = question.add_group_member(self, @group)
+        @issue_group.max = @groupmax if defined?(@groupmax)
+      end
     end
 
-    def manually_scored?
-      defined?(@max)
-    end
+    attr_reader :issue_group
 
-    def score(flags)
-      score = template.score(flags)
-      @last_explanation = template.last_explanation
-      return score
+    #
+    # Computes a score for this issue, and assigns it to the exam paper's score
+    # data.
+    #
+    def score(exam_paper)
+
+      # Do nothing if this issue is being manually scored.
+      return nil unless template
+
+      flag_set = exam_paper[name]
+      score_data = exam_paper.score_data
+      note = ''
+
+      #
+      # Zero-point cases. These also do not result in quality points. The flag
+      # set must be marked as considered before the no-points condition.
+      #
+      return score_data.add_score(self, 0, 'not found') unless flag_set
+      flag_set.considered = true
+      return score_data.add_score(self, 0, 'no points') if max == 0
+
+      # Convert the flag set
+      conv_flags = rubric.translations.convert(
+        flag_set, type, exam_paper.subflags(name), note
+      )
+
+      # Collect quality information
+      rubric.quality.values.each { |qt| qt.update(conv_flags) }
+
+      # Score the issue
+      score = template.score(conv_flags, note)
+
+      # Apply the group cap if any.
+      if @issue_group
+        score = @issue_group.apply_cap(self, score, score_data, note)
+      end
+
+      return score_data.add_score(self, score, note.strip)
     end
 
     def type
@@ -73,11 +124,13 @@ class Rubric
     end
 
     def max
-      defined?(@max) ? @max : template.max
+      return defined?(@max) ? @max : template.max
     end
 
-    def last_explanation
-      template.last_explanation
+    attr_accessor :issue_group
+
+    def inspect
+      return "#<Rubric::Issue #{question.name}/#{name}>"
     end
 
   end
