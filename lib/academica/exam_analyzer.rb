@@ -48,17 +48,24 @@ class ExamAnalyzer
   def question_stats
     return @question_data if defined?(@question_data)
     score
-    return @question_data = @rubric.questions.map { |name, question|
+    @question_data = @rubric.questions.map { |name, question|
       scores = @exam_papers.values.map { |e|
         e.score_data.score_for_question(name)
       }
       [ name, {
-        points: question.total_points,
-        weight: question.weight,
-        mean:   scores.mean,
-        sd:     scores.standard_deviation,
+        points:  question.total_points,
+        weight:  question.weight,
+        mean:    scores.mean,
+        sd:      scores.standard_deviation,
+        wt_mean: scores.mean * question.weight,
+        wt_sd:   scores.standard_deviation * question.weight,
       } ]
     }.to_h
+    sd_sum = @question_data.map { |k, v| v[:wt_sd] }.sum
+    @question_data.each do |k, v|
+      v[:sd_pct] = v[:wt_sd] * 100.0 / sd_sum
+    end
+    return @question_data
   end
 
   #

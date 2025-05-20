@@ -5,6 +5,31 @@ require 'set'
 class ExamPaper
   class FlagSet
 
+    # List of valid flags, mapped to a sort order.
+    VALID_FLAGS = {
+      's' => 0,
+      'a' => 100,
+      'A' => 110,
+      'X' => 120,
+      'i' => 200,
+      'I' => 205,
+      'r' => 210,
+      'R' => 215,
+      'e' => 220,
+      'E' => 225,
+      'f' => 230,
+      'F' => 235,
+      'b' => 300,
+      't' => 310,
+      'P' => 400,
+      'p' => 405,
+      'w' => 410,
+      'W' => 415,
+      'h' => 420,
+      'H' => 425,
+      'd' => 430,
+    }
+
     def initialize(id, issue)
       @exam_id = id
       @issue = issue
@@ -16,7 +41,11 @@ class ExamPaper
     attr_accessor :considered
 
     def to_s
-      "#<FlagSet #@exam_id/#@issue #{@flags.sort.join}>"
+      "#<FlagSet #@exam_id/#@issue #{flag_string}>"
+    end
+
+    def flag_string
+      @flags.sort_by { |f| VALID_FLAGS[f] || 1000 }.join
     end
 
     #
@@ -46,7 +75,7 @@ class ExamPaper
     # Tests that the flags are valid.
     #
     def test_valid_flags
-      extra = @flags - %w(s a A X i I r R e E f F b t P p w W h H d)
+      extra = @flags - VALID_FLAGS.keys
       return if extra.empty?
       raise "For #{self}, unknown flags #{extra.join(', ')}"
     end

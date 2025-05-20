@@ -5,6 +5,52 @@ module CLICharts
   extend CLICharts
 
   #
+  # Formats a table of data, which is given as a hash of hashes or as a table.
+  #
+  def tabulate(data)
+
+    if data.is_a?(Hash)
+      cols = {}
+
+      # Collect all the possible keys
+      data.each do |key, hash|
+        hash.each do |k, v|
+          cols[k] ||= cols.count
+        end
+      end
+
+      # Populate a table
+      data = data.map do |key, hash|
+        arr = [ key.to_s, *([ '' ] * cols.count) ]
+        hash.each do |k, v|
+          arr[cols[k] + 1] = block_given? ? \
+            yield(k, v) : tabulate_cell_format(v)
+        end
+        arr
+      end
+
+      # Add the header row
+      data.unshift([ '', *cols.keys.map(&:to_s) ])
+    end
+
+    # Determine the table cell widths
+    widths = data.map { |row| row.map(&:length) }.transpose.map(&:max)
+
+    data.each do |row|
+      puts row.zip(widths).map { |elt, width|
+        elt.rjust(width)
+      }.join("  ")
+    end
+  end
+
+  def tabulate_cell_format(data)
+    case data
+    when Float then (data >= 1 ? "%.2f" : "%.3f") % data 
+    else data.to_s
+    end
+  end
+
+  #
   # Data should be an array of 2-element arrays representing (x, y) coordinates.
   #
   def graph(data, xlabel, ylabel)

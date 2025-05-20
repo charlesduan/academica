@@ -76,27 +76,24 @@ class ExamDispatcher < Dispatcher
   def cmd_issues(pattern = nil)
     issues = [].concat(*exams.map { |exam_paper|
       exam_paper.to_a
-    }).group_by { |flag_set| flag_set.issue }.sort_by { |i, a| -a.count }
+    }).group_by { |flag_set| flag_set.issue }
 
     if pattern
-      r = Regexp.new(pattern)
-      issues = issues.select { |issue, flag_sets| issue =~ r }
+      if issues[pattern]
+        issues = { pattern => issues[pattern] }
+      else
+        r = Regexp.new(pattern)
+        issues = issues.select { |issue, flag_sets| issue =~ r }
+      end
     end
 
     case issues.count
     when 0
       warn("No matching issues found")
     when 1
-      issue, flag_sets = issues.first
-      types = flag_sets.group_by(&:type).transform_values(&:count)
-      puts "#{issue}: #{flag_sets.count}/#{exams.count} exams"
-      puts "  #{types.sort.map { |t, c| "#{t} #{c}" }.join(", ")}"
-
-      specials = %w(b t).map { |f|
-        "#{f} #{flag_sets.count { |fs| fs.include?(f) }}"
-      }
-      puts "  #{specials.join(", ")}"
+      summarize_one_issue(*issues.first)
     else
+      issues = issues.sort_by { |i, a| -a.count }
       length = issues.map { |issue, flag_sets| issue.length }.max
 
       issues.each do |issue, flag_sets|
@@ -105,6 +102,22 @@ class ExamDispatcher < Dispatcher
     end
   end
 
+  def summarize_one_issue(issue, flag_sets)
+    types = flag_sets.group_by(&:type).transform_values(&:count)
+    puts "#{issue}: #{flag_sets.count}/#{exams.count} exams"
+    puts "  #{types.sort.map { |t, c| "#{t} #{c}" }.join(", ")}"
+
+    specials = %w(s b t h H w W p P d).map { |f|
+      "#{f} #{flag_sets.count { |fs| fs.include?(f) }}"
+    }
+    puts "  #{specials.join(", ")}"
+
+    flag_sets.map { |fs|
+      fs.flag_string.gsub(/[btdpPhHwWs]/, '')
+    }.group_by { |s| s.length }.sort.reverse.each do |count, strings|
+      puts ("%3d" % count) + ": " + strings.group_by(&:itself).keys.sort.join(", ")
+    end
+  end
 
 
 
@@ -170,17 +183,15 @@ class ExamDispatcher < Dispatcher
     exam_analyzer.score
     questions = rubric.questions.keys
 
-    puts "Exam ID " + questions.join(' ') + "   TOTAL"
+    CLICharts.tabulate(exam_analyzer.map { |exam_paper|
+      [
+        exam_paper.exam_id,
+        (questions.map { |q|
+          [ q, exam_paper.score_data.score_for_question(q) ]
+        } + [ [ 'TOTAL', exam_paper.score_data.total_score ] ]).to_h
+      ]
+    }.to_h)
 
-    exam_analyzer.each do |exam_paper|
-      puts [
-        exam_paper.exam_id.ljust(7),
-        *questions.map { |q|
-          exam_paper.score_data.score_for_question(q).to_s.rjust(q.length)
-        },
-        ("%4.1f" % exam_paper.score_data.total_score)
-      ].join(' ')
-    end
   end
 
   def cat_exam; "2. Analyzing Scores" end
@@ -194,7 +205,39 @@ class ExamDispatcher < Dispatcher
     raise "No exam paper with ID #{exam_id}" unless exam_paper
 
     rubric.score_exam(exam_paper)
-    puts YAML.dump(exam_paper.score_data.summarize)
+    exam_paper.score_data.summarize.each do |question, qdata|
+      puts question
+      missed_issues, pointless_issues = [], []
+      qdata.each do |issue, pdata|
+        next if pdata[:points] == '0/0' && pdata[:note] == 'not found'
+        if pdata[:note] == 'not found'
+          missed_issues.push(issue)
+        elsif pdata[:points] == '0/0'
+          pointless_issues.push(issue)
+        else
+          puts "  #{issue.ljust(22, ' .')}: #{pdata[:points]}"
+          puts TextTools.line_break(
+            pdata[:note], prefix: "    ", preserve_lines: true
+          )
+          puts
+        end
+      end
+      unless missed_issues.empty?
+        puts TextTools.line_break(
+          "#{missed_issues.join(", ")}",
+          first_prefix: "  Missed: ",
+          prefix:       "    ",
+        )
+      end
+      unless pointless_issues.empty?
+        puts TextTools.line_break(
+          "#{pointless_issues.join(", ")}",
+          first_prefix: "  No points: ",
+          prefix:       "    ",
+        )
+      end
+      puts
+    end
   end
 
   def cat_stats; "2. Analyzing Scores" end
@@ -209,13 +252,7 @@ class ExamDispatcher < Dispatcher
 
   def cmd_stats(*exam_ids)
     stats = exam_analyzer.question_stats
-    stats.each do |name, stat|
-      puts "#{name}:"
-      puts "  Total:  #{stat[:points]}"
-      puts "  Weight: #{stat[:weight]}"
-      puts "  Mean:   #{stat[:mean].round(2)}"
-      puts "  SD:     #{stat[:sd].round(2)}"
-    end
+    CLICharts.tabulate(stats)
     exam_ids.each do |exam_id|
       puts "Exam ID #{exam_id}:"
       print_exam_stats(exam_id)
@@ -271,14 +308,42 @@ class ExamDispatcher < Dispatcher
       Analyzes performance on the multiple choice component of the exam.
     EOF
   end
-  def cmd_mc(pattern = nil)
+  def cmd_mc(pattern = nil, subgroup = nil)
     mc = rubric.multiple_choice
     unless mc
       warn("No multiple choice specified on the exam rubric")
       exit 1
     end
     scores = exam_analyzer.scores_for_pattern(pattern)
-    puts mc.statistics(scores).to_yaml
+    stats = mc.statistics(scores)
+
+    questions = stats[:questions]
+    if subgroup
+      list = stats[:summary][subgroup.to_sym]
+      raise "No summary group #{subgroup}" unless list.is_a?(Array)
+      questions = questions.select { |q, qstats|
+        list.include?(q)
+      }
+    end
+
+    questions.each do |q, qstats|
+      pct = (qstats[:frac_correct] * 100).round(1)
+      puts "#{q}: #{pct}% correct"
+      puts "  " + qstats[:answer_count].map { |a, num|
+        "%s%s %-3d" % [ a, a == qstats[:correct] ? '*' : ':', num ]
+      }.join("  ")
+      qstats.each do |key, stat|
+        next if [ :frac_correct, :answer_count, :correct ].include?(key)
+        puts "  #{key}: #{stat}"
+      end
+      puts
+    end
+
+    unless subgroup
+      stats[:summary].each do |key, qs|
+        puts "#{key}: #{qs.join(", ")}"
+      end
+    end
   end
 
   def cat_normal; "3. Letter Grades" end

@@ -187,13 +187,24 @@ class Rubric
         [ exam_id, score_for(exam_id) ]
       }.to_h
 
-      return @key.map { |qnum, correct|
+      # For each question:
+      res = @key.map { |qnum, correct|
+
+        # For each exam, collect its total score and whether that exam got this
+        # question correct. The result is a table mapping scores to
+        # correct/incorrect values.
         data = scores.map { |exam_id, score|
           [ score, (@responses[exam_id][qnum] == correct) ? 1 : 0 ]
         }.sort_by { |score, resp| score }
+
+        # This will be a hash with keys 0 and 1 (representing correct and
+        # incorrect answers) mapped to a list of scores of exams with that
+        # answer.
         grouped_scores = data.group_by { |score, resp|
           resp
         }.transform_values { |lists| lists.map(&:first) }
+
+        # 27% the number of exams.
         count_27pct = (data.count * 0.27).round
 
         [ qnum, {
@@ -215,6 +226,28 @@ class Rubric
 
       }.to_h
 
+      return { :questions => res, :summary => summarize_statistics(res) }
+    end
+
+    def summarize_statistics(question_stats)
+      res = {
+        :easy => [],
+        :hard_low_corr => [],
+        :low_corr => [],
+        :hard => [],
+      }
+      question_stats.each { |q, qstat|
+        if qstat[:frac_correct] >= 0.8
+          res[:easy].push(q)
+        elsif qstat[:frac_correct] < 0.4 && qstat[:point_biserial] < 0.2
+          res[:hard_low_corr].push(q)
+        elsif qstat[:point_biserial] < 0.2
+          res[:low_corr].push(q)
+        elsif qstat[:frac_correct] < 0.4
+          res[:hard].push(q)
+        end
+      }
+      return res
     end
 
   end
