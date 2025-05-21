@@ -33,12 +33,18 @@ module CLICharts
       data.unshift([ '', *cols.keys.map(&:to_s) ])
     end
 
+    tdata = data.transpose
+
     # Determine the table cell widths
-    widths = data.map { |row| row.map(&:length) }.transpose.map(&:max)
+    widths = tdata.map { |col| col.map(&:length) }.map(&:max)
+
+    justs = tdata.map { |col|
+      col.count { |elt| elt =~ /^-?\d+\.?\d*$/ } > col.count / 2 ? :r : :l
+    }
 
     data.each do |row|
-      puts row.zip(widths).map { |elt, width|
-        elt.rjust(width)
+      puts row.zip(widths, justs).map { |elt, width, justs|
+        justs == :r ? elt.rjust(width) : elt.ljust(width)
       }.join("  ")
     end
   end
@@ -50,6 +56,13 @@ module CLICharts
     end
   end
 
+  # Computes Pearson's correlation coefficient, given an array of data pairs.
+  def pearson_r(data)
+    xmean, ymean = data.transpose.map(&:mean)
+    covar = data.sum { |x, y| (x - xmean) * (y - ymean) } / data.count
+    return covar / data.transpose.map(&:standard_deviation).inject(:*)
+  end
+
   #
   # Data should be an array of 2-element arrays representing (x, y) coordinates.
   #
@@ -57,9 +70,7 @@ module CLICharts
     x_range = data.map(&:first).minmax
     y_range = data.map(&:last).minmax
 
-    xmean, ymean = data.transpose.map(&:mean)
-    covar = data.sum { |x, y| (x - xmean) * (y - ymean) } / data.count
-    r = covar / data.transpose.map(&:standard_deviation).inject(:*)
+    r = pearson_r(data)
 
     plot_dim = [ 60, 18 ]
     plot_array = (0 ... plot_dim.last).map { |i| [ 0 ] * plot_dim.first }

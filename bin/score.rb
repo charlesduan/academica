@@ -302,10 +302,49 @@ class ExamDispatcher < Dispatcher
     )
   end
 
+  def cat_correl; "2. Analyzing Scores" end
+  def help_correl
+    return <<~EOF
+      Computes a correlation (r) for every issue on the exam.
+
+      The pattern indicates the baseline for the correlations.
+    EOF
+  end
+  def cmd_correl(pattern = nil, subgroup = nil)
+
+    scores = exam_analyzer.scores_for_pattern(pattern)
+
+    table = [ %w(question issue pt r) ]
+    rubric.each do |question|
+      qname = question.name
+      question.sort_by(&:max).reverse.each do |issue|
+        next if issue.extra || issue.max == 0
+        issue_scores = exam_analyzer.map { |exam_paper|
+          [
+            scores[exam_paper.exam_id],
+            exam_paper.score_data.score_for_issue(issue)
+          ]
+        }
+
+        r = CLICharts.pearson_r(issue_scores)
+        next if r.nan?
+
+        table.push([ qname, issue.name, issue.max.to_s, r.round(3).to_s ])
+        qname = ''
+      end
+    end
+
+    CLICharts.tabulate(table)
+
+  end
+
+
   def cat_mc; "2. Analyzing Scores" end
   def help_mc
     return <<~EOF
       Analyzes performance on the multiple choice component of the exam.
+
+      The pattern argument gives the baseline score for correlations.
     EOF
   end
   def cmd_mc(pattern = nil, subgroup = nil)
