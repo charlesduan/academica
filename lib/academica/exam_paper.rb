@@ -35,7 +35,7 @@ class ExamPaper
         if (m = line.match(/^%+\s+(\S+):\s+(\w+)(?:, .*)?$/))
           add(m[1], m[2])
         else
-          raise "Invalid line #{line} in #{file}" if line.include?(":")
+          raise "Invalid line #{line} in #{filename}" if line.include?(":")
         end
       end
     end
