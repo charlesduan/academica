@@ -142,5 +142,11 @@ class ExamAnalyzer
     return @curve = curve_spec.actual_curve
   end
 
+  def opt_curve
+    return nil unless curve_spec.actual
+    return curve
+  end
+
+
 
 end

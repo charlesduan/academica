@@ -295,29 +295,35 @@ class Rubric
       #
       # Returns a map of exam IDs to letter grades.
       #
-      def grades
-        @scores.transform_values { |score| grade_for(score) }
+      def grades(no_f: false)
+        if no_f
+          @scores.transform_values { |score| grade_for(score) }.reject { |id, g|
+            g == 'F'
+          }
+        else
+          @scores.transform_values { |score| grade_for(score) }
+        end
       end
 
       #
       # Returns a map of exam IDs to GPA values.
       #
-      def gpas
-        grades.transform_values { |grade| GPA_MAP[grade] }
+      def gpas(no_f: false)
+        grades(no_f: no_f).transform_values { |grade| GPA_MAP[grade] }
       end
 
       #
       # Computes the mean GPA.
       #
-      def mean_gpa
-        gpas.values.mean
+      def mean_gpa(no_f: true)
+        gpas(no_f: no_f).values.mean
       end
 
       #
       # Computes the GPA standard deviation.
       #
-      def stddev_gpa
-        gpas.values.standard_deviation
+      def stddev_gpa(no_f: true)
+        gpas(no_f: no_f).values.standard_deviation
       end
 
       #

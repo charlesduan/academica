@@ -182,14 +182,17 @@ class ExamDispatcher < Dispatcher
   def cmd_scores
     exam_analyzer.score
     questions = rubric.questions.keys
+    curve = exam_analyzer.opt_curve
 
     CLICharts.tabulate(exam_analyzer.map { |exam_paper|
-      [
-        exam_paper.exam_id,
-        (questions.map { |q|
-          [ q, exam_paper.score_data.score_for_question(q) ]
-        } + [ [ 'TOTAL', exam_paper.score_data.total_score ] ]).to_h
-      ]
+      res = questions.map { |q|
+        [ q, exam_paper.score_data.score_for_question(q) ]
+      }.to_h
+      res['TOTAL'] = exam_paper.score_data.total_score
+      if curve
+        res['grade'] = curve.grade_for(res['TOTAL'])
+      end
+      [ exam_paper.exam_id, res ]
     }.to_h)
 
   end
@@ -205,19 +208,22 @@ class ExamDispatcher < Dispatcher
     raise "No exam paper with ID #{exam_id}" unless exam_paper
 
     rubric.score_exam(exam_paper)
-    exam_paper.score_data.summarize.each do |question, qdata|
-      puts question
+    score_data = exam_paper.score_data
+    rubric.each do |question|
+      puts "#{question.name}: #{score_data.score_for_question(question.name)}" \
+        "/#{question.total_points}"
       missed_issues, pointless_issues = [], []
-      qdata.each do |issue, pdata|
-        next if pdata[:points] == '0/0' && pdata[:note] == 'not found'
-        if pdata[:note] == 'not found'
-          missed_issues.push(issue)
-        elsif pdata[:points] == '0/0'
-          pointless_issues.push(issue)
+      question.each do |issue|
+        data = score_data.data_for_issue(issue)
+        next if issue.max == 0 && data[:note] == 'not found'
+        if data[:note] == 'not found'
+          missed_issues.push(issue.name)
+        elsif issue.max == 0
+          pointless_issues.push(issue.name)
         else
-          puts "  #{issue.ljust(22, ' .')}: #{pdata[:points]}"
+          puts "  #{issue.name.ljust(22, ' .')}: #{data[:points]}"
           puts TextTools.line_break(
-            pdata[:note], prefix: "    ", preserve_lines: true
+            data[:note], prefix: "    ", preserve_lines: true
           )
           puts
         end
@@ -473,40 +479,58 @@ class ExamDispatcher < Dispatcher
       Two types of outliers are returned. First, those for which the performance
       on one question was substantially unexpected compared to their overall
       performance. Second, those that are close to the boundaries of the curve.
+
+      For the second type, the parameter is the fractional change in score
+      necessary to change the exam's grade. By default this is 0.005 (half a
+      percent).
     EOF
   end
-  def cmd_outliers(point_range = 3)
+  def cmd_outliers(dev = "0.005")
+    dev = dev.to_f
+    raise "Deviation must be a small decimal" if dev <= 0 || dev > 0.1
     curve = exam_analyzer.curve
-    borderline_exams = []
+
+    borderline_exams = {}
     exam_analyzer.each do |exam_paper|
       score = exam_paper.score_data.total_score
-      hi, lo = score + point_range, score - point_range
-      if curve.grade_for(hi) != curve.grade_for(lo)
-        borderline_exams.push([ score, exam_paper ])
+      pt_dev = dev * score
+      cur, hi, lo = [ score, score + pt_dev, score - pt_dev ].map { |s|
+        curve.grade_for(s)
+      }
+      if cur != hi
+        borderline_exams[exam_paper.exam_id] = {
+          score: score, grade: cur, possible: hi
+        }
+      elsif cur != lo
+        borderline_exams[exam_paper.exam_id] = {
+          score: score, grade: cur, possible: lo
+        }
       end
+
     end
 
-    borderline_exams.group_by { |score, exam_paper|
-      curve.grade_for(score)
-    }.sort.each do |grade, data|
-      puts "Borderline #{grade}:"
-      data.sort_by(&:first).each do |score, exam_paper|
-        puts "  #{exam_paper.exam_id}: #{score}"
-      end
-      puts
-    end
+    puts "Close to grade border:"
+    CLICharts.tabulate(borderline_exams)
 
     stats = exam_analyzer.question_stats
-    exam_analyzer.each do |exam_paper|
+    big_sds = exam_analyzer.map { |exam_paper|
       estats = exam_analyzer.stats_for(exam_paper.exam_id)
+      # Discard the quality result; this one is too distracting
+      estats.delete('quality')
       esmin, esmax = estats.minmax { |estat1, estat2|
         estat1.last[:diff] <=> estat2.last[:diff]
       }
-      next if esmax.last[:diff] - esmin.last[:diff] <= 2
-      puts
-      puts "Exam ID #{exam_paper.exam_id}:"
-      print_exam_stats(exam_paper.exam_id)
-    end
+      if esmax.last[:diff] - esmin.last[:diff] <= 2
+        nil
+      else
+        [ exam_paper.exam_id, {
+          hi_q: esmax.first, hi_sd: esmax.last[:diff],
+          lo_q: esmin.first, lo_sd: esmin.last[:diff],
+        } ]
+      end
+    }.compact.to_h
+    puts "Major differences in questions:"
+    CLICharts.tabulate(big_sds)
   end
 
   def cat_tryweight; "2. Analyzing Scores" end

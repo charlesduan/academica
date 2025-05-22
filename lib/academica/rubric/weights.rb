@@ -26,7 +26,7 @@ class Rubric
       EOF
     )
     def receive_any(key, weight)
-      input_err("No question #{key} in rubric") unless rubric.questions[key]
+      # input_err("No question #{key} in rubric") unless rubric.questions[key]
       @weights[key] = weight
     end
 

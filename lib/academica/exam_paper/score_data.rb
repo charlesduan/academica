@@ -54,6 +54,12 @@ class ExamPaper
       return @scores[issue.question.name][issue.name][:points]
     end
 
+    def data_for_issue(issue)
+      return nil unless @scores[issue.question.name]
+      return nil unless @scores[issue.question.name][issue.name]
+      return @scores[issue.question.name][issue.name].dup
+    end
+
     def question_scores
       @scores.keys.map { |qname|
         [ qname, score_for_question(qname) ]
@@ -88,7 +94,7 @@ class ExamPaper
           pts += " (extra)" if data[:extra]
           { points: pts, note: data[:note] }
         }
-        [ "#{name}: #{score_for_question(name)}", res ]
+        [ name, res ]
       }.to_h
     end
 

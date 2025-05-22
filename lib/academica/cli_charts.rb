@@ -116,11 +116,14 @@ module CLICharts
     interval ||= ((max - min) / buckets).round
     interval = [ interval.to_i, 1 ].max
 
+
+    table = [ %w(from to val) ]
     min.step(by: interval, to: max + 1) do |i|
       r = (i ... (i + interval))
       c = data.count { |val| r.include?(val) }
-      puts("%-9s  %s" % [ r.to_s, "*" * c ])
+      table << [ r.first.to_s, r.last.to_s, "*" * c ]
     end
+    tabulate(table)
   end
 
 end
