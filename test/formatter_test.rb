@@ -134,7 +134,7 @@ class FormatterTest < Minitest::Test
     ))
 
     formatter_battery(Syllabus::IcalFormatter, {
-      'timezone' => 'America/New York',
+      'timezone' => 'America/New_York',
     }, { :default => :none })
   end
 

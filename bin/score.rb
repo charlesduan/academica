@@ -45,15 +45,13 @@ class ExamDispatcher < Dispatcher
 
   def exams
     return @exams if defined? @exams
-    return @exams = Dir.glob(rubric.file_glob).map { |file|
-      raise "No file #{file}" unless File.exist?(file)
-      unless file =~ rubric.id_regex
-        raise "File #{file} did not match #{rubric.id_regex}"
-      end
-      exam_paper = ExamPaper.new($1)
+    @exams = []
+    rubric.each_exam_paper do |file, exam_id|
+      exam_paper = ExamPaper.new(exam_id)
       exam_paper.read_file(file)
-      exam_paper
-    }
+      @exams.push(exam_paper)
+    end
+    return @exams
   end
 
   def exam_analyzer
@@ -113,7 +111,7 @@ class ExamDispatcher < Dispatcher
     puts "  #{specials.join(", ")}"
 
     flag_sets.map { |fs|
-      fs.flag_string.gsub(/[btdpPhHwWs]/, '')
+      fs.to_s.gsub(/[btdpPhHwWs]/, '')
     }.group_by { |s| s.length }.sort.reverse.each do |count, strings|
       puts ("%3d" % count) + ": " + strings.group_by(&:itself).keys.sort.join(", ")
     end

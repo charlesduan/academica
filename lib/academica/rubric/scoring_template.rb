@@ -4,6 +4,8 @@ class Rubric
   #
   class ScoringTemplate
 
+    TYPES = %w(A a X)
+
     def initialize(name, string, rubric)
       @name = name
       @rubric = rubric
@@ -13,22 +15,27 @@ class Rubric
         first, rest = item[0], item[1..].strip
         case first
         when '@' then @type = rest
-        when '+' then @max = rest.to_i
-        when '-' then @max_sub = rest.to_i
+        when '+'
+          raise "Invalid number in #@name: #{rest}" unless rest =~ /\A\d+\z/
+          @max = rest.to_i
+        when '-'
+          raise "Invalid number in #@name: #{rest}" unless rest =~ /\A\d+\z/
+          @max_sub = rest.to_i
         when '<' then copy_template(rest)
         else
           item.match(/\s*([+-]?\d+)\z/) do |m|
             score = m[1].to_i
             m.pre_match.split('').each do |flag| @flag_vals[flag] = score end
             true
-          end or raise "Invalid item in scoring template: #{item}"
+          end or raise "Invalid item in #{@name}: #{item}"
         end
       end
       raise "No type for template #@name" unless @type
+      raise "Invalid type for template #@name" unless TYPES.include?(@type)
       raise "No max points for template #@name" unless @max
     end
 
-    attr_reader :type, :max, :max_sub, :flag_vals
+    attr_reader :type, :max, :max_sub, :flag_vals, :rubric
 
     def copy_template(template)
       source = @rubric.templates[template]
@@ -39,20 +46,20 @@ class Rubric
       @flag_vals = source.flag_vals.dup
     end
 
-    attr_reader :last_explanation
-
     #
-    # Scores a list of flags, given as an Enumerable.
+    # Scores a list of flags, given as a string. (If it is given as a FlagSet,
+    # it is converted.)
     #
-    def score(flags, note)
+    def score(flag_str, note = nil)
       if @max == 0
-        note << "0 pts\n"
+        note << "0 pts\n" if note
         return 0
       end
       add, sub = 0, 0
-      @last_explanation = "#{flags.flags.join('')} "
-      flags.each do |flag|
-        res = score_one_flag(flag, @flag_vals[flag])
+      flag_str = flag_str.to_s unless flag_str.is_a?(String)
+      new_note = "#{flag_str} "
+      flag_str.each_char do |flag|
+        res = score_one_flag(flag, new_note)
         if res > 0
           add += res
         else
@@ -62,46 +69,48 @@ class Rubric
 
       # Cap the additions and subtractions
       if add > @max
-        @last_explanation << "#{add}=>#@max "
+        new_note << "#{add}=>#@max "
         add = @max
       end
 
-      if sub > @max_sub
-        @last_explanation << "-#{sub}=>-#@max_sub "
+      if defined?(@max_sub) && sub > @max_sub
+        new_note << "-#{sub}=>-#@max_sub "
         sub = @max_sub
       end
 
       # Apply the subtractions
       if sub > 0
-        @last_explanation << "#{add}-#{sub}=>#{add - sub} "
+        new_note << "#{add}-#{sub}=>#{add - sub} "
         add -= sub
       end
 
       # Minimum of 0 points awarded
       if add < 0
-        @last_explanation << "#{add}=>0 "
+        new_note << "#{add}=>0 "
         add = 0
       end
 
-      @last_explanation << "=#{add}"
-      note << @last_explanation << "\n"
+      new_note << "=#{add}"
+      note << new_note << "\n" if note
       return add
     end
 
 
-    def score_one_flag(flag, val)
+    def score_one_flag(flag, note = nil)
       if %w(a A X).include?(flag)
         unless @type == flag
           raise "Template #@name uses type #@type but got #{flag}"
         end
         return 0
       end
+
+      val = @flag_vals[flag]
       raise "Template #@name has no score for flag #{flag}" unless val
 
       if val >= 0
-        @last_explanation << "#{flag}+#{val} "
+        note << "#{flag}+#{val} " if note
       else
-        @last_explanation << "#{flag}#{val} "
+        note << "#{flag}#{val} " if note
       end
       return val
     end

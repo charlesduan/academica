@@ -69,7 +69,6 @@ class Rubric
       @templates[name] = ScoringTemplate.new(name, str, self)
     end
   end
-  attr_reader :templates
 
   element :quality, { String => String }, description: <<~EOF
     Template specifications for overall exam quality.
@@ -136,7 +135,18 @@ class Rubric
     unless @weights
       @weights = Weights.new({}, self)
     end
+  end
 
+  #
+  # Reads files and yields for each one, along with its ID.
+  #
+  def each_exam_paper
+    Dir.glob(@file_glob).each do |file|
+      raise "No file #{file}" unless File.exist?(file)
+      m = @id_regex.match(file)
+      raise "File #{file} did not match #{@id_regex}" unless m
+      yield(file, m[1])
+    end
   end
 
   #
@@ -150,9 +160,12 @@ class Rubric
   end
 
 
+  # 
+  # Generates a YAML format summary of this rubric, which consists of a summary
+  # of each question.
+  #
   def summary
     res = @questions.transform_values { |question| question.summary }
-    res['quality'] = @quality.transform_values { |qt| qt.max.to_s }
     return res
   end
 
@@ -173,7 +186,7 @@ class Rubric
 
     each do |question|
       question.each do |issue|
-        score_issue(issue, exam_paper)
+        issue.score(issue, exam_paper)
       end
     end
 
@@ -196,10 +209,6 @@ class Rubric
       )
     end
 
-  end
-
-  def score_issue(issue, exam_paper)
-    return issue.score(exam_paper)
   end
 
   def check_exam(exam_paper)

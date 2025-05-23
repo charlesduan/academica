@@ -63,13 +63,13 @@ class Rubric
       The actual curve to use. This should be a mapping of letter grades to
       cutoff scores.
     EOF
-    attr_reader :actual
 
     def receive_parent(p)
       @rubric = p
     end
 
     attr_accessor :scores
+    undef scores=
     def scores=(scores)
       @scores = scores
       if @actual

@@ -1,34 +1,29 @@
+require 'academica/rubric/scoring_template'
 require 'set'
-#
-# Functions for testing whether the flags for an issue are valid, and
-# interpreting the issue's flags.
+
 class ExamPaper
+
+  #
+  # A FlagSet represents a collection of flags associated with an issue tag
+  # name found on an exam paper. Thus, the flag set is identified by an Exam ID
+  # and an issue tag, and then flags are added to the set.
+  #
   class FlagSet
 
-    # List of valid flags, mapped to a sort order.
-    VALID_FLAGS = {
-      's' => 0,
-      'a' => 100,
-      'A' => 110,
-      'X' => 120,
-      'i' => 200,
-      'I' => 205,
-      'r' => 210,
-      'R' => 215,
-      'e' => 220,
-      'E' => 225,
-      'f' => 230,
-      'F' => 235,
-      'b' => 300,
-      't' => 310,
-      'P' => 400,
-      'p' => 405,
-      'w' => 410,
-      'W' => 415,
-      'h' => 420,
-      'H' => 425,
-      'd' => 430,
-    }
+    def self.valid_flags
+      return @valid_flags
+    end
+    def self.set_valid_flags(str)
+      @valid_flags = str.each_char.map.with_index { |c, i|
+        [ c, i ]
+      }.to_h.freeze
+    end
+    def self.sort_flags(arr)
+      arr.sort_by { |f| @valid_flags[f] }
+    end
+
+    # Default valid flags and their order
+    set_valid_flags("saAXiIrReEfFbtpPwWhHd")
 
     def initialize(id, issue)
       @exam_id = id
@@ -40,12 +35,12 @@ class ExamPaper
     attr_reader :flags, :exam_id, :issue
     attr_accessor :considered
 
-    def to_s
-      "#<FlagSet #@exam_id/#@issue #{flag_string}>"
+    def inspect
+      "#<FlagSet #@exam_id/#@issue #{to_s}>"
     end
 
-    def flag_string
-      @flags.sort_by { |f| VALID_FLAGS[f] || 1000 }.join
+    def to_s
+      self.class.sort_flags(@flags).join
     end
 
     #
@@ -75,7 +70,7 @@ class ExamPaper
     # Tests that the flags are valid.
     #
     def test_valid_flags
-      extra = @flags - VALID_FLAGS.keys
+      extra = @flags - self.class.valid_flags.keys
       return if extra.empty?
       raise "For #{self}, unknown flags #{extra.join(', ')}"
     end
@@ -84,7 +79,7 @@ class ExamPaper
     # Tests that there is exactly one type for this issue.
     #
     def test_has_type
-      types = @flags & %w(a A X)
+      types = @flags & Rubric::ScoringTemplate::TYPES
       return if types.count == 1
       raise "For #{self}, no type flag" if types.empty?
       raise "For #{self}, multiple types #{types.join(', ')}"
@@ -105,7 +100,7 @@ class ExamPaper
     #
     def type
       return @type if defined? @type
-      @type = (@flags & %w(a A X)).first
+      @type = (@flags & Rubric::ScoringTemplate::TYPES).first
       return @type
     end
 
@@ -116,6 +111,9 @@ class ExamPaper
       @flags.include?(flag)
     end
 
+    #
+    # Iterates over each flag in this set.
+    #
     def each
       @flags.each do |flag| yield(flag) end
     end

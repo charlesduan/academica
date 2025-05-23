@@ -124,6 +124,7 @@ class Textbook
       @page_seq.omit(1, pg - 1) if pg > 1
     end
 
+    undef start_page
     def start_page
       return @page_seq.count2seq(0)
     end

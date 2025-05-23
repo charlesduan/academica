@@ -5,6 +5,19 @@ require 'minitest/autorun'
 require 'academica/syllabus'
 
 module TestHelper
+
+  def try_cases(*cases)
+    begin
+      print("(")
+      cases.each do |c|
+        yield(c)
+        print(".")
+      end
+    ensure
+      print(")")
+    end
+  end
+
   def setup_syllabus_inputs
     @syl_input = {
       name: "Test Course",

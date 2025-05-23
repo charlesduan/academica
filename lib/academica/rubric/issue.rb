@@ -58,13 +58,16 @@ class Rubric
       return @sub.map { |si| "#@key.#{si}" }
     end
 
+    undef template
+
+    #
+    # Returns the Rubric::ScoringTemplate object for this Issue.
+    #
     def template
       rubric.templates[@template]
     end
 
     def post_initialize
-      input_err("Invalid parent") unless question.is_a?(Question)
-      input_err("Invalid grandparent") unless rubric.is_a?(Rubric)
       if defined?(@max)
         input_err("Can't have template and max") if defined?(@template)
       else
@@ -76,8 +79,6 @@ class Rubric
         @issue_group.max = @groupmax if defined?(@groupmax)
       end
     end
-
-    attr_reader :issue_group
 
     #
     # Computes a score for this issue, and assigns it to the exam paper's score
@@ -109,7 +110,7 @@ class Rubric
       rubric.quality.values.each { |qt| qt.update(conv_flags) }
 
       # Score the issue
-      score = template.score(conv_flags, note)
+      score = template.score(conv_flags.to_s, note)
 
       # Apply the group cap if any.
       if @issue_group
@@ -123,6 +124,11 @@ class Rubric
       template.type
     end
 
+    undef max
+    #
+    # Returns the maximum point value for this Issue, either as given or based
+    # on the associated template.
+    #
     def max
       return defined?(@max) ? @max : template.max
     end
