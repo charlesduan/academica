@@ -11,8 +11,6 @@ class ExamPaper
       @qscores = {}
     end
 
-    attr_accessor :rubric
-
     def add_score(issue, points, note)
       qname, iname = issue.question.name, issue.name
       @scores[qname] ||= {}

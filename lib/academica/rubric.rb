@@ -190,7 +190,6 @@ class Rubric
 
   def score_exam(exam_paper)
 
-    exam_paper.score_data.rubric = self
     check_exam(exam_paper)
     @quality.values.each(&:reset)
 
