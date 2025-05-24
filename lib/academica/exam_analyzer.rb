@@ -53,7 +53,7 @@ class ExamAnalyzer
         e.score_data.score_for_question(name)
       }
       [ name, {
-        points:  question.total_points,
+        points:  question.max,
         weight:  question.weight,
         mean:    scores.mean,
         sd:      scores.standard_deviation,

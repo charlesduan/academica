@@ -12,7 +12,7 @@ class FlagSetTest < Minitest::Test
     return f
   end
 
-  def test_init
+  def test_init_flag_set
     try_cases(
       [ "aI", %w(a I), 'a' ],
       [ "AIr", %w(A I r), 'A' ],

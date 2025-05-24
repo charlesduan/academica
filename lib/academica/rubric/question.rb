@@ -16,7 +16,7 @@ class Rubric
     end
     attr_reader :issues
 
-    def total_points
+    def max
       indiv = @issues.values.sum { |issue|
         (issue.extra || issue.group) ? 0 : issue.max
       }
@@ -97,7 +97,21 @@ class Rubric
     end
 
     def inspect
-      "#<#{self.class} #@name>"
+      "#<#{self.class} #@key>"
+    end
+
+    def score(exam_paper)
+      scores = []
+      each do |issue|
+        scores.push(issue.score(exam_paper))
+      end
+      t, m = scores.sum, max
+      note = "#{scores.join("+")}=#{t}"
+      if t > m
+        note << " =>#{m}"
+        t = m
+      end
+      exam_paper.score_data.add_question_score(self, t, note)
     end
 
   end

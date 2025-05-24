@@ -67,4 +67,8 @@ class Rubric
     end
   end
 
+  def inspect
+    return "#<#{self.class} #@name #@template>"
+  end
+
 end

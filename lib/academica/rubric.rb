@@ -123,6 +123,14 @@ class Rubric
         @quality.transform_values(&:max), self
       )
       @questions['quality'].receive_key('quality')
+      @questions['quality'].each do |q_issue|
+        q_issue.special_score_proc = proc { |exam_paper, note|
+          qt = @quality[q_issue.name]
+          qs = qt.score
+          note << qt.last_explanation
+          qs
+        }
+      end
     end
 
     if defined?(@multiple_choice)
@@ -130,6 +138,10 @@ class Rubric
         'total' => @multiple_choice.max_score
       }, self)
       @questions['mc'].receive_key('mc')
+      @questions['mc']['total'].special_score_proc = proc { |exam_paper, note|
+        note << 'multiple choice'
+        @multiple_choice.score_for(exam_paper.exam_id)
+      }
     end
 
     unless @weights
@@ -178,35 +190,29 @@ class Rubric
 
   def score_exam(exam_paper)
 
+    exam_paper.score_data.rubric = self
     check_exam(exam_paper)
-
-    exam_paper.score_data.weights = @weights
-
     @quality.values.each(&:reset)
 
-    each do |question|
-      question.each do |issue|
-        issue.score(issue, exam_paper)
-      end
+    score = 0
+    notes = []
+
+    # The quality question must be graded last. (This could be fixed by having
+    # the quality computation do a second pass over the exam paper.)
+    qlist = @questions.values.reject { |q| q.name == 'quality' }
+    qlist.push(@questions['quality'])
+
+    qlist.each do |question|
+      s = question.score(exam_paper)
+      score += s * question.weight
+      notes << "#{s}*#{question.weight}"
     end
+
+    exam_paper.score_data.add_total_score(score, notes.join(" + "))
 
     unless exam_paper.all? { |fs| fs.considered }
       unused = exam_paper.reject { |fs| fs.considered }.map(&:issue).join(', ')
       raise "Exam #{exam_paper.exam_id}, unused issue #{unused}"
-    end
-
-    @quality.values.each do |qt|
-      exam_paper.score_data.add_score(
-        @questions['quality'][qt.name], qt.score, qt.last_explanation
-      )
-    end
-
-    if @multiple_choice
-      exam_paper.score_data.add_score(
-        @questions['mc']['total'],
-        @multiple_choice.score_for(exam_paper.exam_id),
-        'multiple choice'
-      )
     end
 
   end

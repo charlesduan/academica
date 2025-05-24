@@ -209,7 +209,7 @@ class ExamDispatcher < Dispatcher
     score_data = exam_paper.score_data
     rubric.each do |question|
       puts "#{question.name}: #{score_data.score_for_question(question.name)}" \
-        "/#{question.total_points}"
+        "/#{question.max}"
       missed_issues, pointless_issues = [], []
       question.each do |issue|
         data = score_data.data_for_issue(issue)
@@ -219,7 +219,8 @@ class ExamDispatcher < Dispatcher
         elsif issue.max == 0
           pointless_issues.push(issue.name)
         else
-          puts "  #{issue.name.ljust(22, ' .')}: #{data[:points]}"
+          puts "  #{issue.name.ljust(22, ' .')}: #{data[:points]}" \
+            "/#{issue.max}#{' (extra)' if issue.extra}"
           puts TextTools.line_break(
             data[:note], prefix: "    ", preserve_lines: true
           )

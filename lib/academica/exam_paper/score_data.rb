@@ -8,12 +8,10 @@ class ExamPaper
     def initialize(exam_paper)
       @exam_paper = exam_paper
       @scores = {}
-      @weights = nil
+      @qscores = {}
     end
 
-    def weights=(weights)
-      @weights = weights
-    end
+    attr_accessor :rubric
 
     def add_score(issue, points, note)
       qname, iname = issue.question.name, issue.name
@@ -21,31 +19,33 @@ class ExamPaper
       if @scores[qname][iname]
         raise "Duplicate score for #{@exam_paper.exam_id}/#{qname}/#{iname}"
       end
+      raise "Points exceeds max for #{issue}" if points > issue.max
       @scores[qname][iname] = {
-        issue: issue,
         points: points,
-        max: issue.max,
         note: note
       }
       @scores[qname][iname][:extra] = true if issue.extra
+      return points
     end
 
-    def add_extra_score(question, name, points, max, note)
-      @scores[question] ||= {}
-      @scores[question][name] = {
-        name: name,
+    def add_question_score(question, points, note)
+      @qscores[question.name] = {
         points: points,
-        max: max,
+        note: note
+      }
+      return points
+    end
+
+    def add_total_score(points, note)
+      @tscore = {
+        points: points,
         note: note
       }
     end
 
     def score_for_question(qname)
-      qscores = @scores[qname]
-      return 0 unless qscores
-      tot_points = qscores.values.sum { |data| data[:points] }
-      tot_max = qscores.values.sum { |data| data[:extra] ? 0 : data[:max] }
-      return [ tot_points, tot_max ].min
+      return 0 unless @qscores[qname]
+      return @qscores[qname][:points]
     end
 
     def score_for_issue(issue)
@@ -67,12 +67,7 @@ class ExamPaper
     end
 
     def total_score
-      unless defined?(@weights)
-        raise "Cannot compute total score without weights"
-      end
-      return question_scores.sum { |qname, qscore|
-        qscore * @weights.for_question(qname)
-      }
+      return @tscore[:points]
     end
 
     def score_matching(qpattern, ipattern)
@@ -87,15 +82,8 @@ class ExamPaper
       return tot
     end
 
-    def summarize
-      return @scores.map { |name, issues|
-        res = issues.transform_values { |data|
-          pts = "#{data[:points]}/#{data[:max]}"
-          pts += " (extra)" if data[:extra]
-          { points: pts, note: data[:note] }
-        }
-        [ name, res ]
-      }.to_h
+    def inspect
+      "#<#{self.class} #{exam_paper.exam_id}>"
     end
 
   end

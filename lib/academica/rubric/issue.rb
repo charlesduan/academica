@@ -80,18 +80,26 @@ class Rubric
       end
     end
 
+    attr_accessor :special_score_proc
+
     #
     # Computes a score for this issue, and assigns it to the exam paper's score
     # data.
     #
     def score(exam_paper)
 
+      note = String.new('')
+      score_data = exam_paper.score_data
+
+      if @special_score_proc
+        s = @special_score_proc.call(exam_paper, note)
+        return score_data.add_score(self, s, note)
+      end
+
       # Do nothing if this issue is being manually scored.
-      return nil unless template
+      return 0 unless template
 
       flag_set = exam_paper[name]
-      score_data = exam_paper.score_data
-      note = ''
 
       #
       # Zero-point cases. These also do not result in quality points. The flag
