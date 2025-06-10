@@ -27,6 +27,17 @@ class ExamAnalyzer
     end
   end
 
+  def overall_stats
+    return @overall_stats if defined? @overall_stats
+    score
+    all_scores = @exam_papers.values.map { |ep| ep.score_data.total_score }
+    @overall_stats = {
+      mean: all_scores.mean,
+      sd: all_scores.standard_deviation,
+    }
+    return @overall_stats
+  end
+
   def rankings
     score
 
@@ -77,9 +88,16 @@ class ExamAnalyzer
       score = exam_paper.score_data.score_for_question(name)
       [ name, {
         points: score,
-        diff: (score - stat[:mean]) / stat[:sd]
+        max: stat[:points],
+        diff: (score - stat[:mean]) / stat[:sd],
       } ]
     }.to_h
+    total = exam_paper.score_data.total_score
+    res['TOTAL'] = {
+      points: total,
+      max: @rubric.max,
+      diff: (total - overall_stats[:mean]) / overall_stats[:sd],
+    }
     return res
   end
 

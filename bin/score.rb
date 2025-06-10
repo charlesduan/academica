@@ -257,6 +257,12 @@ class ExamDispatcher < Dispatcher
 
   def cmd_stats(*exam_ids)
     stats = exam_analyzer.question_stats
+    stats['TOTAL'] = {
+      points: @rubric.max,
+      mean: exam_analyzer.overall_stats[:mean],
+      sd: exam_analyzer.overall_stats[:sd],
+    }
+
     CLICharts.tabulate(stats)
     exam_ids.each do |exam_id|
       puts "Exam ID #{exam_id}:"
@@ -267,7 +273,10 @@ class ExamDispatcher < Dispatcher
   def print_exam_stats(exam_id)
     res = exam_analyzer.stats_for(exam_id)
     res.each do |name, astat|
-      printf("%12s: %5.1f (%+5.2f SD)\n", name, astat[:points], astat[:diff])
+      printf(
+        "%12s: %7.1f/%4d (%+5.2f SD)\n", name, astat[:points], astat[:max],
+        astat[:diff]
+      )
     end
   end
 

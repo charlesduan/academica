@@ -245,6 +245,14 @@ class Rubric
   end
 
   #
+  # Returns the maximum number of points on this exam, after weighting.
+  #
+  def max
+    return sum { |question| question.weight * question.max }
+  end
+
+
+  #
   # An error reflecting a discrepancy between an issue and its sub-issues,
   # between the rubric and an exam paper.
   #
