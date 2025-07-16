@@ -399,6 +399,32 @@ class ExamDispatcher < Dispatcher
     end
   end
 
+  def cat_one_mc; "2. Analyzing Scores" end
+  def help_one_mc
+    return <<~EOF
+      Analyzes a student's performance on the multiple choice part of the exam.
+    EOF
+  end
+  def cmd_one_mc(exam_id)
+    mc = rubric.multiple_choice
+    unless mc
+      warn("No multiple choice specified on the exam rubric")
+      exit 1
+    end
+    # Just check that they have an exam
+    exam_paper = exams.find { |ep| ep.exam_id == exam_id }
+    raise "No exam paper with ID #{exam_id}" unless exam_paper
+
+    ans_table = mc.answers_for(exam_id).map { |qnum, ans|
+      correct = mc.key[qnum]
+      [ qnum, {
+        given: ans,
+        correct: ans == correct ? '' : correct
+      } ]
+    }.to_h
+    CLICharts.tabulate(ans_table)
+
+  end
   def cat_normal; "3. Letter Grades" end
   def help_normal
     return <<~EOF
