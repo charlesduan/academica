@@ -128,10 +128,16 @@ class TestBank
   end
 
   #
-  # Returns a question by number in the randomized set.
+  # Returns a question by number in the randomized set. The number should be the
+  # assigned number of the question (i.e., 1-indexed).
   #
   def [](num)
-    qnum = random_map[num]
+    # Originally this method used a zero-indexed value, which didn't make sense
+    # since the number didn't correspond to the question's actual number.
+    # However, I don't know if I rely on this method anywhere in the code.
+    # Accordingly, it raises an error, to flag misuses of this method.
+    raise "Don't use this method"
+    qnum = random_map[num - 1]
     return qnum && @questions[qnum]
   end
 

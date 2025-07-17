@@ -7,6 +7,7 @@ require 'academica/rubric'
 require 'academica/exam_paper'
 require 'academica/exam_analyzer'
 require 'academica/cli_charts'
+require 'academica/testbank'
 
 
 #
@@ -424,7 +425,58 @@ class ExamDispatcher < Dispatcher
     }.to_h
     CLICharts.tabulate(ans_table)
 
+    return unless mc.testbank
+
+    # TODO: Might be good to reuse testbank.rb choose_io here
+    testbank = TestBank.new(YAML.load_file(mc.testbank))
+    rfile = testbank.files['rand']
+    testbank.import(YAML.load_file(rfile))
+
+    testbank.each do |question|
+      choices = ans_table["q_#{question.assigned_number}"]
+      next if choices[:correct] == ''
+
+      puts "\nQuestion #{question.assigned_number}:"
+      puts TextTools.line_break(question.question.randomized, prefix: '  ')
+      puts
+      puts TextTools.line_break(
+        "Correct: #{question.answer.randomized}. " +
+        question.choice(question.answer.original).randomized,
+        prefix: '    ', first_prefix: '  ',
+      )
+
+      if question.explanation
+        puts
+        puts TextTools.line_break(
+          "Explanation: #{question.explanation.randomized}",
+          prefix: '    ', first_prefix: '  ',
+        )
+      end
+
+
+      puts
+      orig_letter = question.original_for(choices[:given])
+      choice = question.choice(orig_letter)
+      puts TextTools.line_break(
+        "Exam chose: (#{choices[:given]}). " +
+        question.choice(orig_letter).randomized,
+        prefix: '    ', first_prefix: '  ',
+      )
+
+      if question.errors && question.errors[orig_letter]
+        puts
+        puts TextTools.line_break(
+          "Explanation: #{question.errors[orig_letter].randomized}",
+          prefix: '    ', first_prefix: '  ',
+        )
+      end
+    end
+
+
   end
+
+
+
   def cat_normal; "3. Letter Grades" end
   def help_normal
     return <<~EOF

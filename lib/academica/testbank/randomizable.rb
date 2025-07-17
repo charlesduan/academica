@@ -131,6 +131,10 @@ class TestBank
     end
     alias_method :eql?, :==
 
+    def inspect
+      return "#<#{self.class}: #{original.inspect}>"
+    end
+
   end
 
 
