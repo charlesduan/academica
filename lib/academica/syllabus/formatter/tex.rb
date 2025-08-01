@@ -89,10 +89,15 @@ class Syllabus
     def fmt_info_table
       days = text_join(@syllabus.dates.days, amp: " \\& ", commaamp: " \\& ")
 
+      oo_text = "Office hours: " + @syllabus.dates.office_hours.map { |oo|
+        " & #{oo} \\\\"
+      }.join()
+
       return <<~EOF
         Meetings: & #{days}, #{@syllabus.time} \\\\
         Location: & #{@syllabus.location} \\\\
         Credits:  & #{@syllabus.credits} \\\\
+        #{oo_text}
       EOF
     end
 
