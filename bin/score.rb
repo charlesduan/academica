@@ -179,17 +179,14 @@ class ExamDispatcher < Dispatcher
   end
   def cmd_scores
     exam_analyzer.score
-    questions = rubric.questions.keys
     curve = exam_analyzer.opt_curve
 
     CLICharts.tabulate(exam_analyzer.map { |exam_paper|
-      res = questions.map { |q|
-        [ q, exam_paper.score_data.score_for_question(q) ]
+      res = rubric.questions.map { |qname, question|
+        [ qname, exam_paper.score_data.score_for(question) ]
       }.to_h
-      res['TOTAL'] = exam_paper.score_data.total_score
-      if curve
-        res['grade'] = curve.grade_for(res['TOTAL'])
-      end
+      res['TOTAL'] = exam_paper.score_data.total
+      res['grade'] = curve.grade_for(res['TOTAL']) if curve
       [ exam_paper.exam_id, res ]
     }.to_h)
 
@@ -208,21 +205,27 @@ class ExamDispatcher < Dispatcher
     rubric.score_exam(exam_paper)
     score_data = exam_paper.score_data
     rubric.each do |question|
-      puts "#{question.name}: #{score_data.score_for_question(question.name)}" \
+      puts "#{question.name}: #{score_data.score_for(question)}" \
         "/#{question.max}"
+      puts TextTools.line_break(
+        score_data.note_for(question), prefix: "        ", preserve_lines: true
+      )
+      puts
+
       missed_issues, pointless_issues = [], []
       question.each do |issue|
-        data = score_data.data_for_issue(issue)
-        next if issue.max == 0 && data[:note] == 'not found'
-        if data[:note] == 'not found'
+        score = score_data.score_for(issue)
+        note = score_data.note_for(issue)
+        next if issue.max == 0 && note == 'not found'
+        if note == 'not found'
           missed_issues.push(issue.name)
         elsif issue.max == 0
           pointless_issues.push(issue.name)
         else
-          puts "  #{issue.name.ljust(22, ' .')}: #{data[:points]}" \
+          puts "  #{issue.name.ljust(22, ' .')}: #{score}" \
             "/#{issue.max}#{' (extra)' if issue.extra}"
           puts TextTools.line_break(
-            data[:note], prefix: "    ", preserve_lines: true
+            note, prefix: "        ", preserve_lines: true
           )
           puts
         end
@@ -327,7 +330,7 @@ class ExamDispatcher < Dispatcher
         issue_scores = exam_analyzer.map { |exam_paper|
           [
             scores[exam_paper.exam_id],
-            exam_paper.score_data.score_for_issue(issue)
+            exam_paper.score_data.score_for(issue)
           ]
         }
 
@@ -447,7 +450,7 @@ class ExamDispatcher < Dispatcher
     puts
     puts "Grades:"
     exam_analyzer.each do |ep|
-      score = ep.score_data.total_score
+      score = ep.score_data.total
       puts "#{ep.exam_id}\t#{score}\t#{curve.grade_for(score)}"
     end
     if file
@@ -460,7 +463,7 @@ class ExamDispatcher < Dispatcher
         p.workbook.add_worksheet(:name => 'Grades') do |sheet|
           sheet.add_row([ "Final Exam \#/AGN", "Initial Letter Grade" ])
           exam_analyzer.each do |ep|
-            score = ep.score_data.total_score
+            score = ep.score_data.total
             sheet.add_row([ ep.exam_id, curve.grade_for(score) ])
           end
           p.serialize(file)
@@ -491,7 +494,7 @@ class ExamDispatcher < Dispatcher
 
     borderline_exams = {}
     exam_analyzer.each do |exam_paper|
-      score = exam_paper.score_data.total_score
+      score = exam_paper.score_data.total
       pt_dev = dev * score
       cur, hi, lo = [ score, score + pt_dev, score - pt_dev ].map { |s|
         curve.grade_for(s)

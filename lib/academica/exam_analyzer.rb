@@ -20,7 +20,7 @@ class ExamAnalyzer
   def each
     if @scored
       @exam_papers.values.sort_by { |ep|
-        ep.score_data.total_score
+        ep.score_data.total
       }.reverse.each do |ep| yield(ep) end
     else
       @exam_papers.values.each do |ep| yield(ep) end
@@ -33,9 +33,9 @@ class ExamAnalyzer
     last_score, last_rank = nil, nil
 
     return @exam_papers.values.sort_by { |ep|
-      ep.score_data.total_score
+      ep.score_data.total
     }.reverse.map.with_index { |ep, idx|
-      score = ep.score_data.total_score
+      score = ep.score_data.total
       if last_score != score
         last_score, last_rank = score, idx + 1
       end
@@ -50,7 +50,7 @@ class ExamAnalyzer
     score
     @question_data = @rubric.questions.map { |name, question|
       scores = @exam_papers.values.map { |e|
-        e.score_data.score_for_question(name)
+        e.score_data.score_for(question)
       }
       [ name, {
         points:  question.max,
@@ -74,7 +74,7 @@ class ExamAnalyzer
     exam_paper = @exam_papers[exam_id]
     raise "Unknown exam ID #{exam_id}" unless exam_paper
     res = question_stats.map { |name, stat|
-      score = exam_paper.score_data.score_for_question(name)
+      score = exam_paper.score_data.score_for(:question, name)
       [ name, {
         points: score,
         diff: (score - stat[:mean]) / stat[:sd]
@@ -91,24 +91,24 @@ class ExamAnalyzer
   def scores_for_pattern(pattern)
     score
     if pattern.nil? || pattern.empty? || pattern == '/'
-      return @exam_papers.transform_values { |ep|
-        ep.score_data.total_score
-      }
+      return @exam_papers.transform_values { |ep| ep.score_data.total }
     end
 
     qpattern, ipattern = pattern.split('/', 2)
     qpattern = Regexp.new(qpattern)
+    questions = @rubric.questions.values.select { |q| q.name =~ qpattern }
     
     if ipattern
       ipattern = Regexp.new(ipattern)
+      issues = questions.map { |q|
+        q.issues.values.select { |i| i.name =~ ipattern }
+      }.flatten
       return @exam_papers.transform_values { |ep|
-        ep.score_data.score_matching(qpattern, ipattern)
+        issues.sum { |i| ep.score_data.score_for(i) }
       }
     else
       return @exam_papers.transform_values { |ep|
-        ep.score_data.question_scores.sum { |qname, score|
-          qname.match(qpattern) ? score : 0
-        }
+        questions.sum { |q| ep.score_data.score_for(q) }
       }
     end
 
@@ -126,7 +126,7 @@ class ExamAnalyzer
       raise "Cannot perform curve computations without a curve_spec"
     end
     @curve_spec.scores = @exam_papers.transform_values { |ep|
-      ep.score_data.total_score
+      ep.score_data.total
     }
     return @curve_spec
   end

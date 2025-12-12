@@ -207,7 +207,7 @@ class Rubric
       notes << "#{s}*#{question.weight}"
     end
 
-    exam_paper.score_data.add_total_score(score, notes.join(" + "))
+    exam_paper.score_data.add_score(:total, 'total', score, notes.join(" + "))
 
     unless exam_paper.all? { |fs| fs.considered }
       unused = exam_paper.reject { |fs| fs.considered }.map(&:issue).join(', ')

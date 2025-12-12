@@ -106,12 +106,12 @@ class Rubric
         scores.push(issue.score(exam_paper))
       end
       t, m = scores.sum, max
-      note = "#{scores.join("+")}=#{t}"
+      note = "#{scores.reject(&:zero?).join("+")}=#{t}"
       if t > m
         note << " =>#{m}"
         t = m
       end
-      exam_paper.score_data.add_question_score(self, t, note)
+      exam_paper.score_data.add_score(:question, name, t, note)
     end
 
   end

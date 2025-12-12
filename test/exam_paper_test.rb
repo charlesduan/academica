@@ -3,7 +3,7 @@
 require_relative 'test_helper'
 require 'academica/exam_paper'
 
-class FlagSetTest < Minitest::Test
+class ExamPaperTest < Minitest::Test
   include TestHelper
 
   def setup

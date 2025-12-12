@@ -27,10 +27,10 @@ class Rubric
 
       # Check that this issue hasn't already been scored; otherwise it throws
       # off this computation
-      if score_data.score_for_issue(issue) != 0
+      if score_data.score_for(issue) != 0
         raise "Attempting to rescore issue #{issue.name}"
       end
-      tot_points = @issues.map { |i| score_data.score_for_issue(i) }.sum
+      tot_points = @issues.map { |i| score_data.score_for(i) }.sum
       raise "Cap exceeded for for issue group #{@name}" if tot_points > @max
       if tot_points + score > max
         score = max - tot_points

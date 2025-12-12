@@ -93,7 +93,7 @@ class Rubric
 
       if @special_score_proc
         s = @special_score_proc.call(exam_paper, note)
-        return score_data.add_score(self, s, note)
+        return score_data.add_score(:issue, name, s, note)
       end
 
       # Do nothing if this issue is being manually scored.
@@ -105,9 +105,9 @@ class Rubric
       # Zero-point cases. These also do not result in quality points. The flag
       # set must be marked as considered before the no-points condition.
       #
-      return score_data.add_score(self, 0, 'not found') unless flag_set
+      return score_data.add_score(:issue, name, 0, 'not found') unless flag_set
       flag_set.considered = true
-      return score_data.add_score(self, 0, 'no points') if max == 0
+      return score_data.add_score(:issue, name, 0, 'no points') if max == 0
 
       # Convert the flag set
       conv_flags = rubric.translations.convert(
@@ -125,7 +125,7 @@ class Rubric
         score = @issue_group.apply_cap(self, score, score_data, note)
       end
 
-      return score_data.add_score(self, score, note.strip)
+      return score_data.add_score(:issue, name, score, note.strip)
     end
 
     def type
