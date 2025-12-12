@@ -131,7 +131,7 @@ class AcademicCalendar
   end
 
   element(
-    :office_hours, [ String ], optional: true,
+    :office_hours, [ String ],
     check: proc { |arr| arr.all? { |s| s =~ /\A#{OO_RE}\z/ } },
     preproc: proc { |o| o.is_a?(String) ? [ o ] : o },
     description: <<~EOF

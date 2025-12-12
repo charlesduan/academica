@@ -197,7 +197,11 @@ class Textbook
         #
         # Test the page for being within range.
         #
-        page = page_num_for(sheet_num)
+        begin
+          page = page_num_for(sheet_num)
+        rescue
+          break
+        end
         next if start_page && page < start_page
         break if stop_page && page > stop_page
 
