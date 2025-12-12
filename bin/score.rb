@@ -7,6 +7,7 @@ require 'academica/rubric'
 require 'academica/exam_paper'
 require 'academica/exam_analyzer'
 require 'academica/cli_charts'
+require 'academica/testbank'
 
 
 #
@@ -260,6 +261,12 @@ class ExamDispatcher < Dispatcher
 
   def cmd_stats(*exam_ids)
     stats = exam_analyzer.question_stats
+    stats['TOTAL'] = {
+      points: @rubric.max,
+      mean: exam_analyzer.overall_stats[:mean],
+      sd: exam_analyzer.overall_stats[:sd],
+    }
+
     CLICharts.tabulate(stats)
     exam_ids.each do |exam_id|
       puts "Exam ID #{exam_id}:"
@@ -270,7 +277,10 @@ class ExamDispatcher < Dispatcher
   def print_exam_stats(exam_id)
     res = exam_analyzer.stats_for(exam_id)
     res.each do |name, astat|
-      printf("%12s: %5.1f (%+5.2f SD)\n", name, astat[:points], astat[:diff])
+      printf(
+        "%12s: %7.1f/%4d (%+5.2f SD)\n", name, astat[:points], astat[:max],
+        astat[:diff]
+      )
     end
   end
 
@@ -392,6 +402,83 @@ class ExamDispatcher < Dispatcher
       end
     end
   end
+
+  def cat_one_mc; "2. Analyzing Scores" end
+  def help_one_mc
+    return <<~EOF
+      Analyzes a student's performance on the multiple choice part of the exam.
+    EOF
+  end
+  def cmd_one_mc(exam_id)
+    mc = rubric.multiple_choice
+    unless mc
+      warn("No multiple choice specified on the exam rubric")
+      exit 1
+    end
+    # Just check that they have an exam
+    exam_paper = exams.find { |ep| ep.exam_id == exam_id }
+    raise "No exam paper with ID #{exam_id}" unless exam_paper
+
+    ans_table = mc.answers_for(exam_id).map { |qnum, ans|
+      correct = mc.key[qnum]
+      [ qnum, {
+        given: ans,
+        correct: ans == correct ? '' : correct
+      } ]
+    }.to_h
+    CLICharts.tabulate(ans_table)
+
+    return unless mc.testbank
+
+    # TODO: Might be good to reuse testbank.rb choose_io here
+    testbank = TestBank.new(YAML.load_file(mc.testbank))
+    rfile = testbank.files['rand']
+    testbank.import(YAML.load_file(rfile))
+
+    testbank.each do |question|
+      choices = ans_table["q_#{question.assigned_number}"]
+      next if choices[:correct] == ''
+
+      puts "\nQuestion #{question.assigned_number}:"
+      puts TextTools.line_break(question.question.randomized, prefix: '  ')
+      puts
+      puts TextTools.line_break(
+        "Correct: #{question.answer.randomized}. " +
+        question.choice(question.answer.original).randomized,
+        prefix: '    ', first_prefix: '  ',
+      )
+
+      if question.explanation
+        puts
+        puts TextTools.line_break(
+          "Explanation: #{question.explanation.randomized}",
+          prefix: '    ', first_prefix: '  ',
+        )
+      end
+
+
+      puts
+      orig_letter = question.original_for(choices[:given])
+      choice = question.choice(orig_letter)
+      puts TextTools.line_break(
+        "Exam chose: (#{choices[:given]}). " +
+        question.choice(orig_letter).randomized,
+        prefix: '    ', first_prefix: '  ',
+      )
+
+      if question.errors && question.errors[orig_letter]
+        puts
+        puts TextTools.line_break(
+          "Explanation: #{question.errors[orig_letter].randomized}",
+          prefix: '    ', first_prefix: '  ',
+        )
+      end
+    end
+
+
+  end
+
+
 
   def cat_normal; "3. Letter Grades" end
   def help_normal

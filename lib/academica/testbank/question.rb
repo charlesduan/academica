@@ -190,7 +190,8 @@ class TestBank
     #
     def choice(string)
       string = "(#{string})" unless string =~ ChoiceRandomizer::REGEXP
-      return @choices[RandomizableString.new(string)]
+      string = RandomizableString.new(string)
+      return @choices[string]
     end
 
     #
@@ -202,6 +203,15 @@ class TestBank
       rs = RandomizableString.new(string)
       rs.add(@cr)
       return rs.randomized
+    end
+
+    #
+    # Returns the original choice letter (as a string) for the randomized choice
+    # letter (as a string).
+    #
+    def original_for(string)
+      string = "(#{string})" unless string =~ ChoiceRandomizer::REGEXP
+      return @cr.original_for(string)
     end
 
 

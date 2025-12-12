@@ -25,6 +25,10 @@ class Rubric
       consistent with the output of testbank.rb key.
     EOF
 
+    element :testbank, String, optional: true, description: <<~EOF
+      A file with the multiple choice question testbank.
+    EOF
+
     #
     # Process the multiple choice file. The file should contain a header row,
     # the answer key, and an answer for each exam by ID.

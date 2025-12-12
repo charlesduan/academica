@@ -6,7 +6,10 @@ require 'date'
 #
 class AcademicCalendar
 
-  TIME_RE = /\A(1?\d:\d\d)-(1?\d:\d\d) ([AP]M)\z/
+  TIME_RE = /(1?\d:\d\d)-(1?\d:\d\d) ([AP]M)/
+  DAYS = %w(Monday Tuesday Wednesday Thursday Friday Saturday Sunday)
+  OO_RE = /(\w+day)s? at (#{TIME_RE})/
+
 
   class DateRange
 
@@ -57,8 +60,9 @@ class AcademicCalendar
     )
 
     element(:time, String, optional: true,
-            check: proc { |s| s =~ TIME_RE },
+            check: proc { |s| s =~ /\A#{TIME_RE}\z/ },
             description: "The time range for class meetings")
+
 
     def time_range
       if @time
@@ -117,7 +121,7 @@ class AcademicCalendar
   );
 
   element(:time, String, optional: true, default: "TBD",
-          check: proc { |s| s == "TBD" || s =~ TIME_RE },
+          check: proc { |s| s == "TBD" || s =~ /\A#{TIME_RE}\z/ },
           description: "The time range for class meetings")
 
   def time_range
@@ -127,12 +131,19 @@ class AcademicCalendar
   end
 
   element(
+    :office_hours, [ String ], optional: true,
+    check: proc { |arr| arr.all? { |s| s =~ /\A#{OO_RE}\z/ } },
+    preproc: proc { |o| o.is_a?(String) ? [ o ] : o },
+    description: <<~EOF
+      Office hours, in the form "[day] at [time-range]".
+    EOF
+  )
+
+  element(
     :days, [ String ],
     description: "Days of the week when class is held",
     check: proc { |arr|
-      (arr - %w(
-       Monday Tuesday Wednesday Thursday Friday Saturday Sunday
-      )).empty?
+      (arr - DAYS).empty?
     },
   )
 

@@ -42,7 +42,7 @@ class Syllabus
         elsif t.end_with?("\n")
           @outio.write(t)
         else
-          @outio.write("\n#{t}\n\n")
+          warn("Unknown syllabus template text #{t}")
         end
       end
     end
@@ -61,6 +61,7 @@ class Syllabus
         \\def\\coursenumber{#{escape(@syllabus.number)}}
         \\def\\courseinstructor{#{escape(@syllabus.instructor)}}
         \\def\\coursedate{#{escape(@syllabus.dates.description)}}
+        \\def\\coursecredits{#{escape(@syllabus.credits)}}
       EOF
       if @options['preamble']
         write_from_templates(@options['preamble'])
@@ -88,10 +89,15 @@ class Syllabus
     def fmt_info_table
       days = text_join(@syllabus.dates.days, amp: " \\& ", commaamp: " \\& ")
 
+      oo_text = "Office hours: " + @syllabus.dates.office_hours.map { |oo|
+        " & #{oo} \\\\"
+      }.join()
+
       return <<~EOF
         Meetings: & #{days}, #{@syllabus.time} \\\\
         Location: & #{@syllabus.location} \\\\
         Credits:  & #{@syllabus.credits} \\\\
+        #{oo_text}
       EOF
     end
 
