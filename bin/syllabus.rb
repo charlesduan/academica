@@ -132,6 +132,7 @@ class SyllabusDispatcher < Dispatcher
     format(Syllabus::TextFormatter, "text", arg)
   end
 
+
   def help_tex
     return <<~EOF
       Prints a LaTeX version of the syllabus.
@@ -141,6 +142,19 @@ class SyllabusDispatcher < Dispatcher
   end
   def cmd_tex(arg = nil)
     format(Syllabus::TexFormatter, "tex", arg)
+  end
+
+  def cmd_pdf
+    return <<~EOF
+      Compiles a PDF version of the syllabus.
+
+      This is identical to calling the "tex" command, and then running
+      "make syllabus.pdf".
+    EOF
+  end
+  def cmd_pdf
+    cmd_tex()
+    system("make", "syllabus.pdf")
   end
 
   def help_html
