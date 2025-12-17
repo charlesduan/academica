@@ -42,7 +42,7 @@ class Syllabus
         elsif t.end_with?("\n")
           @outio.write(t)
         else
-          warn("Unknown syllabus template text #{t}")
+          raise("Unknown syllabus template text #{t}")
         end
       end
     end
@@ -79,6 +79,8 @@ class Syllabus
       end
       @outio.puts("\\begin{document}\n\n\\maketitle\n\n")
       write_from_templates(@options['before'])
+
+      @outio.puts("\\interlinepenalty=10000\n\n")
     end
 
 
@@ -89,9 +91,13 @@ class Syllabus
     def fmt_info_table
       days = text_join(@syllabus.dates.days, amp: " \\& ", commaamp: " \\& ")
 
-      oo_text = "Office hours: " + @syllabus.dates.office_hours.map { |oo|
-        " & #{oo} \\\\"
-      }.join()
+      if @syllabus.dates.office_hours
+        oo_text = "Office hours: " + @syllabus.dates.office_hours.map { |oo|
+          " & #{oo} \\\\"
+        }.join()
+      else
+        oo_text = "Office hours: & TBD \\\\"
+      end
 
       return <<~EOF
         Meetings: & #{days}, #{@syllabus.time} \\\\
@@ -144,12 +150,13 @@ class Syllabus
     end
 
     def format_reading(reading, pagetext, start_page, stop_page)
+      res = String.new("")
       if reading.tag
-        res = "\\SyllabusHeading{#{escape(reading.tag)}}"
+        res << "\\SyllabusHeading{#{escape(reading.tag)}}"
       elsif reading.optional
-        res = "\\SyllabusHeading{Optional}"
+        res << "\\SyllabusHeading{Optional}"
       else
-        res = "\\Read "
+        res << "\\Read "
       end
       res << book_for(reading)
 
@@ -176,6 +183,7 @@ class Syllabus
     end
 
     def post_output
+      @outio.puts("\\interlinepenalty=0\n\n")
       write_from_templates(@options['after'])
       @outio.puts("\n\\end{document}")
     end

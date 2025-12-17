@@ -10,6 +10,20 @@ class AcademicCalendar
   DAYS = %w(Monday Tuesday Wednesday Thursday Friday Saturday Sunday)
   OO_RE = /(\w+day)s? at (#{TIME_RE})/
 
+  def parse_time(time)
+    time.match(TIME_RE) do |m|
+      start, stop, meridian = m[1..3]
+      start_h, stop_h = start.to_i, stop.to_i
+      if (start_h > stop_h && start_h != 12) or (stop_h == 12 && start_h < 12)
+        raise "Invalid time range #{time}" unless meridian == 'PM'
+        return [ "#{start} AM", "#{stop} PM" ]
+      else
+        return [ "#{start} #{meridian}", "#{stop} #{meridian}" ]
+      end
+    end
+    raise "Invalid time range #{time}"
+  end
+
 
   class DateRange
 
@@ -65,12 +79,8 @@ class AcademicCalendar
 
 
     def time_range
-      if @time
-        m = TIME_RE.match(@time)
-        return [ "#{m[1]} #{m[3]}", "#{m[2]} #{m[3]}" ]
-      else
-        return @parent.time_range
-      end
+      return @parent.time_range unless @time
+      return @parent.parse_time(@time)
     end
 
     #
@@ -126,13 +136,13 @@ class AcademicCalendar
 
   def time_range
     raise "Syllabus does not specify class meeting times" if @time == 'TBD'
-    m = TIME_RE.match(@time)
-    return [ "#{m[1]} #{m[3]}", "#{m[2]} #{m[3]}" ]
+    return parse_time(@time)
   end
 
   element(
     :office_hours, [ String ],
     check: proc { |arr| arr.all? { |s| s =~ /\A#{OO_RE}\z/ } },
+    optional: true,
     preproc: proc { |o| o.is_a?(String) ? [ o ] : o },
     description: <<~EOF
       Office hours, in the form "[day] at [time-range]".
@@ -242,6 +252,44 @@ class AcademicCalendar
   def each_relevant_skip
     @skip.each do |s|
       yield(s) if s.any? { |date| include?(date, ignore_skip: true) }
+    end
+  end
+
+  #
+  # Iterates over all office hours, yielding a block of the weekday and parsed
+  # time for each one found.
+  #
+  def each_oo
+    return unless @office_hours
+    @office_hours.each do |oo_str|
+      oo_str.match(OO_RE) do |m|
+        day = m[1]
+        start, stop = parse_time(m[2])
+        yield(day, start, stop)
+      end
+    end
+  end
+
+  #
+  # Iterates over every day that office hours are held, yielding a block of the
+  # Date object, the start time, and the stop time. Office hours are held on
+  # days listed in office_hours, except if the day is in a non-added skip range.
+  #
+  def each_oo_date
+    return unless @office_hours
+    day_map = {}
+    each_oo do |day, start, stop|
+      (day_map[day] ||= []).push([ start, stop ])
+    end
+    @start.upto(@stop) do |date|
+      unless @add.any? { |range| range.include?(date) }
+        next if @skip.any? { |range| range.include?(date) }
+      end
+      day = date.strftime("%A")
+      next unless day_map.include?(day)
+      day_map[day].each do |start, stop|
+        yield(date, start, stop)
+      end
     end
   end
 

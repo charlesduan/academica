@@ -28,6 +28,16 @@ class Syllabus
     end
 
     def post_output
+      @syllabus.dates.each_oo_date do |date, start, stop|
+        event = @calendar.event
+        event.dtstart = Icalendar::Values::DateTime.new(
+          Time.parse(start, date), 'tzid' => @tzid
+        )
+        event.dtend = Icalendar::Values::DateTime.new(
+          Time.parse(stop, date), 'tzid' => @tzid
+        )
+        event.summary = "Office Hours #@suffix"
+      end
       @outio.write(@calendar.to_ical)
     end
 
@@ -82,7 +92,7 @@ class Syllabus
     end
 
     def format_reading(reading, pagetext, start_page, stop_page)
-      res = ''
+      res = String.new('')
       res << "(Optional) " if reading.optional
       res << book_for(reading)
       if start_page

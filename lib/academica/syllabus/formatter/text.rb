@@ -42,7 +42,7 @@ class Syllabus
 
     def format_reading(reading, pagetext, start_page, stop_page)
 
-      text = ""
+      text = String.new("")
       text << "(Optional) " if reading.optional
       text << "#{book_for(reading)}"
       if start_page
