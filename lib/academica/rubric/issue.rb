@@ -23,7 +23,8 @@ class Rubric
       found.
 
       This list is used to validate that, for an X type answer, every sub-issue
-      was flagged (even if that is no flags).
+      was flagged (even if that is no flags). The list elements need not contain
+      the "[issue]." prefix.
     EOF
 
     element(
