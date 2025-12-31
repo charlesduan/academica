@@ -249,7 +249,7 @@ class ExamDispatcher < Dispatcher
     exam_paper = exams.find { |ep| ep.exam_id == exam_id }
     raise "No exam paper with ID #{exam_id}" unless exam_paper
 
-    rubric.score_exam(exam_paper)
+    exam_analyzer.score
     score_data = exam_paper.score_data
     rubric.each do |question|
       puts "#{question.name}: #{score_data.score_for(question)}" \
