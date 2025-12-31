@@ -16,6 +16,9 @@ class SyllabusDispatcher < Dispatcher
   end
 
   add_structured_commands
+  def explain_classes
+    [ Syllabus ]
+  end
 
   def add_options(opts)
     opts.on("-f", "--file FILE", "File with course information") do |f|

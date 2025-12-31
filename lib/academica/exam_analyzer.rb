@@ -30,7 +30,7 @@ class ExamAnalyzer
   def overall_stats
     return @overall_stats if defined? @overall_stats
     score
-    all_scores = @exam_papers.values.map { |ep| ep.score_data.total_score }
+    all_scores = @exam_papers.values.map { |ep| ep.score_data.total }
     @overall_stats = {
       mean: all_scores.mean,
       sd: all_scores.standard_deviation,
@@ -92,7 +92,7 @@ class ExamAnalyzer
         diff: (score - stat[:mean]) / stat[:sd],
       } ]
     }.to_h
-    total = exam_paper.score_data.total_score
+    total = exam_paper.score_data.total
     res['TOTAL'] = {
       points: total,
       max: @rubric.max,
@@ -161,7 +161,7 @@ class ExamAnalyzer
   end
 
   def opt_curve
-    return nil unless curve_spec.actual
+    return nil unless @curve_spec && curve_spec.actual
     return curve
   end
 

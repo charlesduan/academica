@@ -61,6 +61,9 @@ class ExamDispatcher < Dispatcher
   end
 
   add_structured_commands
+  def explain_classes
+    [ Rubric ]
+  end
 
   def cat_issues; "1. Marking Papers" end
   def help_issues
@@ -73,37 +76,63 @@ class ExamDispatcher < Dispatcher
     EOF
   end
   def cmd_issues(pattern = nil)
+
+    # Gather all issues by collecting the flag sets of all exam papers. The
+    # result is a hash of issues to data about the issue.
     issues = [].concat(*exams.map { |exam_paper|
       exam_paper.to_a
-    }).group_by { |flag_set| flag_set.issue }
+    }).group_by { |flag_set| flag_set.issue }.transform_values { |fs|
+      { :flag_sets => fs }
+    }
 
+    # Gather information about issues known in the rubric.
+    rubric.each do |question|
+      question.each do |issue|
+        # While a warning for nonexistent issues could be useful, it would also
+        # generate spurious warnings for the quality and multiple choice
+        # pseudo-questions.
+        next unless issues[issue.name]
+        issues[issue.name][:question] = question.name
+        issues[issue.name][:points] = issue.max
+      end
+    end
+
+    # Select the relevant issues if a pattern was given
     if pattern
       if issues[pattern]
         issues = { pattern => issues[pattern] }
       else
         r = Regexp.new(pattern)
-        issues = issues.select { |issue, flag_sets| issue =~ r }
+        issues = issues.select { |issue, data| issue =~ r }
       end
     end
 
+    #
+    # Dispatch an appropriate output form depending on how many issues were
+    # found.
+    #
     case issues.count
     when 0
       warn("No matching issues found")
     when 1
       summarize_one_issue(*issues.first)
     else
-      issues = issues.sort_by { |i, a| -a.count }
-      length = issues.map { |issue, flag_sets| issue.length }.max
-
-      issues.each do |issue, flag_sets|
-        puts("%-#{length}s %2d/%2d" % [ issue, flag_sets.count, exams.count ])
-      end
+      summarize_issues(issues)
     end
   end
 
-  def summarize_one_issue(issue, flag_sets)
+  def summarize_one_issue(issue, data)
+    flag_sets = data[:flag_sets]
     types = flag_sets.group_by(&:type).transform_values(&:count)
-    puts "#{issue}: #{flag_sets.count}/#{exams.count} exams"
+
+    if data[:question]
+      qinfo = ", question #{data[:question]} " \
+        "(#{data[:points]} point#{'s' if data[:points] != 1})"
+    else
+      qinfo = ''
+    end
+
+    puts "#{issue}: #{flag_sets.count}/#{exams.count} exams#{qinfo}"
     puts "  #{types.sort.map { |t, c| "#{t} #{c}" }.join(", ")}"
 
     specials = %w(s b t h H w W p P d).map { |f|
@@ -114,11 +143,28 @@ class ExamDispatcher < Dispatcher
     flag_sets.map { |fs|
       fs.to_s.gsub(/[btdpPhHwWs]/, '')
     }.group_by { |s| s.length }.sort.reverse.each do |count, strings|
-      puts ("%3d" % count) + ": " + strings.group_by(&:itself).keys.sort.join(", ")
+      puts ("%3d" % count) + ": " + \
+        strings.group_by(&:itself).keys.sort.join(", ")
     end
+
   end
 
+  def summarize_issues(issues)
+    issues = issues.sort_by { |i, d| -d[:flag_sets].count }
+    length = issues.map { |issue, data| issue.length }.max
 
+    issues.each do |issue, data|
+      if data[:question]
+        qdata = "   %-20s %2d" % [ data[:question], data[:points] || -1 ]
+      else
+        qdata = ''
+      end
+      puts("%-#{length}s %2d/%2d%s" % [
+        issue, data[:flag_sets].count, exams.count, qdata
+      ])
+    end
+
+  end
 
   def cat_progress; "1. Marking Papers" end
   def help_progress
