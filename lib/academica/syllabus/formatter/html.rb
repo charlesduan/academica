@@ -17,7 +17,7 @@ class Syllabus
     def format_due_date(date, expl)
       @outio.puts <<~EOF
         <p>
-          <b>DUE #{date.strftime('%B %e')}:" #{expl}</b>
+          <b>DUE #{date.strftime('%B %e')}: #{expl}</b>
         </p>
 
       EOF
