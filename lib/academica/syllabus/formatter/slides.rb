@@ -1,10 +1,10 @@
 require 'academica/format_tools'
 
-#
-# Formatter for producing slides.
-#
-
 class Syllabus
+
+  #
+  # Formatter for producing slides.
+  #
   class SlidesFormatter < Formatter
 
     include Academica::FormatTools::TeX

@@ -1,9 +1,9 @@
 require 'texttools'
 
-#
-# Abstract class for output formatters.
-#
 class Syllabus
+  #
+  # Abstract class for output formatters.
+  #
   class Formatter
 
     include TextTools

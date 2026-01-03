@@ -1,9 +1,9 @@
 require 'academica/format_tools'
 
-#
-# Formatter for text output.
-#
 class Syllabus
+  #
+  # Formatter for text output.
+  #
   class TextFormatter < Formatter
 
     include Academica::FormatTools::Plain
