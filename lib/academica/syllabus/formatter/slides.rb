@@ -1,26 +1,26 @@
 require 'academica/format_tools'
 require 'erb'
 
-#
-# Formatter for producing slides. Options to this class are ERB templates for
-# generating slide content. Options available are:
-#
-# - header: preamble and initial matter.
-# - reading: a reading. Variables include
-#   +book_name+, +optional+, +start_page+, and +stop_page+.
-#
-# - entry: a single entry in the reading. Variables include +page+ and +heading+
-#   (the reading's formatted heading).
-#
-# - assignment: an assignment. Variables include +assignment+ (the assignment
-#   text).
-#
-# - footer: closing matter.
-#
-# The header is required; defaults are provided for the others.
-#
-
 class Syllabus
+
+  #
+  # Formatter for producing slides. Options to this class are ERB templates for
+  # generating slide content. Options available are:
+  #
+  # - header: preamble and initial matter.
+  # - reading: a reading. Variables include
+  #   +book_name+, +optional+, +start_page+, and +stop_page+.
+  #
+  # - entry: a single entry in the reading. Variables include +page+ and
+  #   +heading+ (the reading's formatted heading).
+  #
+  # - assignment: an assignment. Variables include +assignment+ (the assignment
+  #   text).
+  #
+  # - footer: closing matter.
+  #
+  # The header is required; defaults are provided for the others.
+  #
   class SlidesFormatter < Formatter
 
     include Academica::FormatTools::TeX

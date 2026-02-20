@@ -1,29 +1,30 @@
 require 'academica/format_tools'
 
-#
-# Produces formatting for a TeX file.
-#
-# Options that this formatter accepts:
-#
-# * `preamble`:  An array of items to include in the preamble.
-# * `before`:    An array of items to include before the class schedule.
-# * `after`:     An array of items to include after the class schedule.
-# * `doc_class`: The document class, default article.
-# * `doc_opts`:  Options for the document class, default 12pt.
-#
-# Where an array is called for, the array may contain three types of items:
-#
-# * A filename, in which case the file is read and placed into the output file.
-#
-# * A method name, corresponding to a `fmt_[name]` method in this class, in
-#   which case that method is called to insert output into the file.
-#
-# * Text to insert directly into the file. This is selected if neither of the
-#   above two options are satisifed. If the text ends with a newline, it is
-#   inserted as-is; otherwise it is inserted as an independent paragraph into
-#   the document.
-#
 class Syllabus
+  #
+  # Produces formatting for a TeX file.
+  #
+  # Options that this formatter accepts:
+  #
+  # * `preamble`:  An array of items to include in the preamble.
+  # * `before`:    An array of items to include before the class schedule.
+  # * `after`:     An array of items to include after the class schedule.
+  # * `doc_class`: The document class, default article.
+  # * `doc_opts`:  Options for the document class, default 12pt.
+  #
+  # Where an array is called for, the array may contain three types of items:
+  #
+  # * A filename, in which case the file is read and placed into the output
+  #   file.
+  #
+  # * A method name, corresponding to a `fmt_[name]` method in this class, in
+  #   which case that method is called to insert output into the file.
+  #
+  # * Text to insert directly into the file. This is selected if neither of the
+  #   above two options are satisifed. If the text ends with a newline, it is
+  #   inserted as-is; otherwise it is inserted as an independent paragraph into
+  #   the document.
+  #
   class TexFormatter < Syllabus::Formatter
 
     include Academica::FormatTools::TeX
