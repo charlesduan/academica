@@ -9,6 +9,10 @@ class Textbook
 
   include Structured
 
+  def inspect
+    return "#<Textbook: #@name>"
+  end
+
   set_description <<~EOF
     A book or other reading material to be used in a course. The book must be
     converted to a text file as follows:

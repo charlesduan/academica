@@ -54,12 +54,13 @@ class Syllabus
     end
 
     def format_class_header(date, class_day)
-      binding.local_variable_set(:title, escape(class_day.name))
-      binding.local_variable_set(:instructor, escape(@syllabus.instructor))
-      binding.local_variable_set(:course_name, escape(@syllabus.fqn))
-      binding.local_variable_set(:number, class_day.sequence)
+      b = binding
+      b.local_variable_set(:title, escape(class_day.name))
+      b.local_variable_set(:instructor, escape(@syllabus.instructor))
+      b.local_variable_set(:course_name, escape(@syllabus.fqn))
+      b.local_variable_set(:number, class_day.sequence)
 
-      @outio.puts(read_template('header').result(binding))
+      @outio.puts(read_template('header').result(b))
     end
 
     def format_reading(reading, pagetext, start_page, stop_page)
@@ -96,13 +97,14 @@ class Syllabus
 
       reading.each_entry do |entry|
         heading = escape(entry.text)
-        heading = case text
+        heading = case heading
                   when / v\. / then "\\emph{#{heading}}"
                   when /^In re / then "\\emph{#{heading}}"
                   else heading
                   end
-        binding.local_variable_set(:page, entry.page)
-        @outio.puts(template.result(binding))
+        b = binding
+        b.local_variable_set(:page, entry.page)
+        @outio.puts(template.result(b))
       end
     end
 
