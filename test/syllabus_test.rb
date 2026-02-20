@@ -150,10 +150,10 @@ class SyllabusTest < Minitest::Test
 
   def test_format_due_date
     @syl_input[:classes] = @classes_input
-    @syl_input[:due_dates] = {
-      '2024-11-14' => 'Group Project',
-      '2024-12-05' => 'Final',
-    }
+    @syl_input[:due_dates] = [
+      { date: '2024-11-14', description: 'Group Project' },
+      { date: '2024-12-05', name: 'Final', description: 'Exam' },
+    ]
     s = Syllabus.new(@syl_input)
     f = TestFormatter.new(s, STDOUT, { verbose: false })
     s.format(f)
@@ -161,10 +161,10 @@ class SyllabusTest < Minitest::Test
     assert_equal [
       'format_class_header 2024-11-07 Group 1 Class 1',
       'format_section Group 2',
-      'format_due_date 2024-11-14 Group Project',
+      'format_due_date 2024-11-14 Assignment Due: Group Project',
       'format_class_header 2024-11-14 Group 2 Class 1',
       'format_class_header 2024-11-21 Group 2 Class 2',
-      'format_due_date 2024-12-05 Final',
+      'format_due_date 2024-12-05 Final: Exam',
     ], f.record
   end
 

@@ -145,8 +145,11 @@ class Syllabus
       @outio.puts "\n\\subsection{#{escape(section)}}\n\n"
     end
 
-    def format_due_date(date, expl)
-      @outio.puts "\n\\DueDate{#{text_date(date)}} #{escape(expl)}"
+    def format_due_date(due_date)
+      @outio.puts(
+        "\n\\DueDate{#{text_date(due_date.date)}}{#{escape(due_date.name)}}\n"
+      )
+      @outio.puts(escape(due_date.description))
     end
 
     def format_reading(reading, pagetext, start_page, stop_page)

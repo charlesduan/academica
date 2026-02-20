@@ -32,10 +32,11 @@ class Syllabus
 
     end
 
-    def format_due_date(date, assignment)
+    def format_due_date(due_date)
       @outio.puts("\n")
       @outio.puts(line_break(
-        "#{text_date(date)}: DUE DATE -- #{escape(assignment)}",
+        "#{text_date(due_date.date)}: #{escape(due_date.name)} -- " \
+        "#{escape(due_date.description)}",
         prefix: "  ", first_prefix: ""
       ))
     end

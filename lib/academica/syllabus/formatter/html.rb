@@ -14,10 +14,13 @@ class Syllabus
       @outio.puts "<ul>"
     end
 
-    def format_due_date(date, expl)
+    def format_due_date(due_date)
+      boldtext = due_date.date.strftime('%B %e')
+      boldtext << "&mdash;#{escape(due_date.name)}" if due_date.name
+      boldtext << ":"
       @outio.puts <<~EOF
         <p>
-          <b>DUE #{date.strftime('%B %e')}:" #{expl}</b>
+          <b>DUE #{boldtext}</b> #{escape(due_date.description)}
         </p>
 
       EOF

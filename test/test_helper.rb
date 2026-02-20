@@ -150,8 +150,11 @@ class TestFormatter < Syllabus::Formatter
   def format_assignments(assignments)
     @record.push("format_assignments #{assignments.join(', ')}") if @verbose
   end
-  def format_due_date(date, text)
-    @record.push("format_due_date #{date.iso8601} #{text}")
+  def format_due_date(due_date)
+    @record.push(
+      "format_due_date #{due_date.date.iso8601} #{due_date.name}: " \
+      "#{due_date.description}"
+    )
   end
 
 end
