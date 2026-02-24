@@ -73,6 +73,9 @@ class TestBankDispatcher < Dispatcher
   end
 
   add_structured_commands
+  def explain_classes
+    return [ TestBank ]
+  end
 
   def help_stats
     "Provides general statistics on the test bank's questions."

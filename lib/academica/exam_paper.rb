@@ -8,7 +8,7 @@ class ExamPaper
   def initialize(id)
     @exam_id = id
     @issues = {}
-    @score_data = ScoreData.new(self)
+    @score_data = ScoreData.new
   end
   attr_reader :exam_id, :score_data
 

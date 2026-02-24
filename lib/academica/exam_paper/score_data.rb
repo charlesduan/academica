@@ -1,87 +1,96 @@
 class ExamPaper
 
   #
-  # Records data on scores for an exam paper.
+  # Records data on scores for an exam paper. This is simply a database of
+  # scores; any score-computing logic should be in the rubric.
+  #
+  # Each score entry is associated with a type and a name. The valid types are
+  # :issue, :question, and :total. The names should be the names associated with
+  # each issue or question (the :total name is irrelevant).
   #
   class ScoreData
 
-    def initialize(exam_paper)
-      @exam_paper = exam_paper
+    def initialize
       @scores = {}
-      @qscores = {}
     end
 
-    def add_score(issue, points, note)
-      qname, iname = issue.question.name, issue.name
-      @scores[qname] ||= {}
-      if @scores[qname][iname]
-        raise "Duplicate score for #{@exam_paper.exam_id}/#{qname}/#{iname}"
-      end
-      raise "Points exceeds max for #{issue}" if points > issue.max
-      @scores[qname][iname] = {
-        points: points,
-        note: note
-      }
-      @scores[qname][iname][:extra] = true if issue.extra
+    #
+    # The valid types of scores
+    TYPES = [ :issue, :question, :total ]
+
+    # 
+    # Adds a score to the score data object. The type is one of the valid types,
+    # the name is a string identifying the scored object, points is a numeric
+    # value, and note is a textual explanation of the score.
+    #
+    # +type+ and +name+ are converted per convert_type_name.
+    #
+    def add_score(type, name, points, note)
+      type, name = convert_type_name(type, name)
+
+      tscores = (@scores[type] ||= Hash.new)
+      warn("Overwriting score for #{type} #{name}") if tscores[name]
+      tscores[name] = { points: points, note: note }
+
       return points
     end
 
-    def add_question_score(question, points, note)
-      @qscores[question.name] = {
-        points: points,
-        note: note
-      }
-      return points
+    #
+    # Returns the score for a given type and name. See convert_type_name for the
+    # meanings of type and name.
+    #
+    def score_for(type, name = nil)
+      type, name = convert_type_name(type, name)
+      return 0 unless @scores[type]
+      return 0 unless @scores[type][name]
+      return @scores[type][name][:points]
     end
 
-    def add_total_score(points, note)
-      @tscore = {
-        points: points,
-        note: note
-      }
+    #
+    # Returns any note associated with the given type and name. See
+    # convert_type_name for the meanings of type and name.
+    #
+    def note_for(type, name = nil)
+      type, name = convert_type_name(type, name)
+      return '' unless @scores[type]
+      return '' unless @scores[type][name]
+      return @scores[type][name][:note] || ''
     end
 
-    def score_for_question(qname)
-      return 0 unless @qscores[qname]
-      return @qscores[qname][:points]
-    end
-
-    def score_for_issue(issue)
-      return 0 unless @scores[issue.question.name]
-      return 0 unless @scores[issue.question.name][issue.name]
-      return @scores[issue.question.name][issue.name][:points]
-    end
-
-    def data_for_issue(issue)
-      return nil unless @scores[issue.question.name]
-      return nil unless @scores[issue.question.name][issue.name]
-      return @scores[issue.question.name][issue.name].dup
-    end
-
-    def question_scores
-      @scores.keys.map { |qname|
-        [ qname, score_for_question(qname) ]
-      }.to_h
-    end
-
-    def total_score
-      return @tscore[:points]
-    end
-
-    def score_matching(qpattern, ipattern)
-      tot = 0
-      @scores.each do |qname, issues|
-        next unless qname.match(qpattern)
-        issues.each do |iname, data|
-          next unless iname.match(ipattern)
-          tot += data[:points]
-        end
+    #
+    # Several methods require a type and name. There are several ways of
+    # providing this; this method converts them to a canonical form.
+    #
+    # The canonical form is for +type+ to be a symbol in TYPES, and +name+ to be
+    # a string. Other possibilities are:
+    #
+    # * +type+ is a Rubric::Question or Rubric::Issue object, in which case
+    #   +type+ is set to an appropriate symbol and +name+ to the object's name.
+    #
+    # * +name+ is an object responding to the method `name`, in which case it is
+    #   converted accordingly.
+    #
+    # * +type+ is :total, in which case +name+ is set to 'total'.
+    #
+    def convert_type_name(type, name)
+      case type
+      when Rubric::Question
+        type, name = :question, type.name
+      when Rubric::Issue
+        type, name = :issue, type.name
+      when :total
+        name = 'total'
       end
-      return tot
+
+      raise "Invalid score data type #{type}" unless TYPES.include?(type)
+      name = name.name if !name.is_a?(String) && name.respond_to?(:name)
+      raise "Invalid name #{name}" unless name.is_a?(String)
+
+      return type, name
     end
 
-    def inspect
-      "#<#{self.class} #{exam_paper.exam_id}>"
+    def total
+      return score_for(:total)
     end
 
   end

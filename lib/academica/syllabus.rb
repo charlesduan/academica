@@ -5,6 +5,7 @@ require 'academica/syllabus/textbook'
 # require 'academica/syllabus/coursepack'
 require 'academica/syllabus/formatter'
 require 'academica/syllabus/class_day'
+require 'academica/syllabus/due_date'
 
 
 class Syllabus
@@ -41,10 +42,7 @@ class Syllabus
 
 
   element(
-    :due_dates, { Date => String }, optional: true, default: [].freeze,
-    preproc: proc { |hash|
-      hash.transform_keys { |k| k.is_a?(String) ? Date.parse(k) : k }
-    },
+    :due_dates, [ DueDate ], optional: true,
     description: <<~EOF
       The assignments for the course that are not class-dependent. The keys are
       assignment due dates, and the values are the text describing the
@@ -169,9 +167,12 @@ class Syllabus
     # * Class group headings
     # * Holidays
     #
-    items = @due_dates.map { |date, text|
-      [ date, 3, proc { formatter.format_due_date(date, text) } ]
-    }
+    items = []
+    if defined? @due_dates
+      items.concat(@due_dates.map { |due_date|
+        [ due_date.date, 3, proc { formatter.format_due_date(due_date) } ]
+      })
+    end
 
     items.concat(self.map { |cday|
       [ cday.date, 4, proc {

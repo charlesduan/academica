@@ -28,6 +28,16 @@ class Syllabus
     end
 
     def post_output
+      @syllabus.dates.each_oo_date do |date, start, stop|
+        event = @calendar.event
+        event.dtstart = Icalendar::Values::DateTime.new(
+          Time.parse(start, date), 'tzid' => @tzid
+        )
+        event.dtend = Icalendar::Values::DateTime.new(
+          Time.parse(stop, date), 'tzid' => @tzid
+        )
+        event.summary = "Office Hours #@suffix"
+      end
       @outio.write(@calendar.to_ical)
     end
 
@@ -63,16 +73,12 @@ class Syllabus
       ]
     end
 
-    def format_due_date(date, assignment)
+    def format_due_date(due_date)
       @current_event = @calendar.event
-      @current_event.dtstart = Icalendar::Values::Date.new(date)
-      @current_event.dtend = Icalendar::Values::Date.new(date)
-      if assignment.length > 30
-        @current_event.summary = "Assignment Due #{@suffix}"
-        @current_event.description = escape(assignment)
-      else
-        @current_event.summary = "#{assignment} #{@suffix}"
-      end
+      @current_event.dtstart = Icalendar::Values::Date.new(due_date.date)
+      @current_event.dtend = Icalendar::Values::Date.new(due_date.date)
+      @current_event.summary = "#{escape(due_date.name)} #@suffix"
+      @current_event.description = escape(due_date.description)
     end
 
     def format_noclass(date_range)

@@ -24,11 +24,15 @@ module TestHelper
       number: "TEST-000-001",
       books: {},
       classes: [],
-      dates: { start: '2024-11-07', stop: '2024-11-21', days: %w(Thursday) },
+      dates: {
+        start: '2024-11-07', stop: '2024-11-21', days: %w(Thursday),
+        office_hours: [ "Monday at 10:00-11:00 AM" ],
+      },
     }
     @vacation_input = {
       start: '2024-11-07', stop: '2024-11-28', days: %w(Thursday),
       skip: [ "2024-11-14, Holiday" ],
+      office_hours: [ "Monday at 10:00-11:00 AM" ],
     }
     @book_input = {
       book1: { name: "Book One", url: "web1" },
@@ -146,8 +150,11 @@ class TestFormatter < Syllabus::Formatter
   def format_assignments(assignments)
     @record.push("format_assignments #{assignments.join(', ')}") if @verbose
   end
-  def format_due_date(date, text)
-    @record.push("format_due_date #{date.iso8601} #{text}")
+  def format_due_date(due_date)
+    @record.push(
+      "format_due_date #{due_date.date.iso8601} #{due_date.name}: " \
+      "#{due_date.description}"
+    )
   end
 
 end

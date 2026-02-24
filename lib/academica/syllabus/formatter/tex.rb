@@ -1,29 +1,30 @@
 require 'academica/format_tools'
 
-#
-# Produces formatting for a TeX file.
-#
-# Options that this formatter accepts:
-#
-# * `preamble`:  An array of items to include in the preamble.
-# * `before`:    An array of items to include before the class schedule.
-# * `after`:     An array of items to include after the class schedule.
-# * `doc_class`: The document class, default article.
-# * `doc_opts`:  Options for the document class, default 12pt.
-#
-# Where an array is called for, the array may contain three types of items:
-#
-# * A filename, in which case the file is read and placed into the output file.
-#
-# * A method name, corresponding to a `fmt_[name]` method in this class, in
-#   which case that method is called to insert output into the file.
-#
-# * Text to insert directly into the file. This is selected if neither of the
-#   above two options are satisifed. If the text ends with a newline, it is
-#   inserted as-is; otherwise it is inserted as an independent paragraph into
-#   the document.
-#
 class Syllabus
+  #
+  # Produces formatting for a TeX file.
+  #
+  # Options that this formatter accepts:
+  #
+  # * `preamble`:  An array of items to include in the preamble.
+  # * `before`:    An array of items to include before the class schedule.
+  # * `after`:     An array of items to include after the class schedule.
+  # * `doc_class`: The document class, default article.
+  # * `doc_opts`:  Options for the document class, default 12pt.
+  #
+  # Where an array is called for, the array may contain three types of items:
+  #
+  # * A filename, in which case the file is read and placed into the output
+  #   file.
+  #
+  # * A method name, corresponding to a `fmt_[name]` method in this class, in
+  #   which case that method is called to insert output into the file.
+  #
+  # * Text to insert directly into the file. This is selected if neither of the
+  #   above two options are satisifed. If the text ends with a newline, it is
+  #   inserted as-is; otherwise it is inserted as an independent paragraph into
+  #   the document.
+  #
   class TexFormatter < Syllabus::Formatter
 
     include Academica::FormatTools::TeX
@@ -42,7 +43,7 @@ class Syllabus
         elsif t.end_with?("\n")
           @outio.write(t)
         else
-          warn("Unknown syllabus template text #{t}")
+          raise("Unknown syllabus template text #{t}")
         end
       end
     end
@@ -79,6 +80,8 @@ class Syllabus
       end
       @outio.puts("\\begin{document}\n\n\\maketitle\n\n")
       write_from_templates(@options['before'])
+
+      @outio.puts("\\interlinepenalty=10000\n\n")
     end
 
 
@@ -89,9 +92,13 @@ class Syllabus
     def fmt_info_table
       days = text_join(@syllabus.dates.days, amp: " \\& ", commaamp: " \\& ")
 
-      oo_text = "Office hours: " + @syllabus.dates.office_hours.map { |oo|
-        " & #{oo} \\\\"
-      }.join()
+      if @syllabus.dates.office_hours
+        oo_text = "Office hours: " + @syllabus.dates.office_hours.map { |oo|
+          " & #{oo} \\\\"
+        }.join()
+      else
+        oo_text = "Office hours: & TBD \\\\"
+      end
 
       return <<~EOF
         Meetings: & #{days}, #{@syllabus.time} \\\\
@@ -139,8 +146,11 @@ class Syllabus
       @outio.puts "\n\\subsection{#{escape(section)}}\n\n"
     end
 
-    def format_due_date(date, expl)
-      @outio.puts "\n\\DueDate{#{text_date(date)}} #{escape(expl)}"
+    def format_due_date(due_date)
+      @outio.puts(
+        "\n\\DueDate{#{text_date(due_date.date)}}{#{escape(due_date.name)}}\n"
+      )
+      @outio.puts(escape(due_date.description))
     end
 
     def format_reading(reading, pagetext, start_page, stop_page)
@@ -177,6 +187,7 @@ class Syllabus
     end
 
     def post_output
+      @outio.puts("\\interlinepenalty=0\n\n")
       write_from_templates(@options['after'])
       @outio.puts("\n\\end{document}")
     end

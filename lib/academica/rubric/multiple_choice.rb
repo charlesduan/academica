@@ -14,20 +14,40 @@ class Rubric
     EOF
 
     element :file, String, description: <<~EOF
-      The file with multiple choice answers. The file should be a tab-delimited
-      table with the headings "ID Number", "Exam ID", or "Student Name" to
-      identify each student, and "Q [number]" for each question. A row where the
-      name/ID number is "Key" is used as the answer key.
+      The file with multiple choice answers. The file should be a comma- or
+      tab-delimited table with the headings "ID Number", "Exam ID", or "Student
+      Name" to identify each student, and "Q [number]" for each question. A row
+      where the name/ID number is "Key" is used as the answer key.
     EOF
 
     element :answer_key, String, optional: true, description: <<~EOF
-      A separate file with the answer key, which should be tab-delimited
-      consistent with the output of testbank.rb key.
+      A separate file with the answer key. The file may be tab or comma
+      delimited, depending on the file extension. It should have a header with
+      columns "Question" and "Answer".
     EOF
 
     element :testbank, String, optional: true, description: <<~EOF
       A file with the multiple choice question testbank.
     EOF
+
+    #
+    # Reads a data table file, and yields arrays of cell values.
+    #
+    def read_data_file(filename)
+      if filename =~ /\.csv$/i
+        sep = /\s*,\s*/
+      else
+        sep = /\t/
+      end
+
+      open(filename) do |io|
+        io.each do |line|
+          yield(line.chomp.split(sep).map { |x|
+            x =~ /\A\s*"(.*)"\s*\z/ ? $1 : x
+          })
+        end
+      end
+    end
 
     #
     # Process the multiple choice file. The file should contain a header row,
@@ -37,42 +57,59 @@ class Rubric
       @file = file
       @responses = {}
 
-      open(file) do |io|
-
-        # Process the header to find where the name columns are and where the
-        # questions are.
-        name_pos = []
-        question_pos = {}
-        io.gets.chomp.split(/\t/).each_with_index do |head, i|
-          head = clean_header(head)
-          if %w(student_name id_number exam_id).include?(head)
-            name_pos.push(i)
-          elsif head =~ /^q_\d+$/
-            question_pos[i] = head
-          elsif %w(% score #_correct blank_count).include?(head)
-            # Ignore
-          else
-            raise "In multiple choice file, unknown header #{head}"
+      name_pos = []
+      question_pos = {}
+      read_data_file(file) do |row|
+        if name_pos.empty? # First header row
+          row.each_with_index do |head, i|
+            head = head.downcase.strip.gsub(' ', '_')
+            if %w(student_name id_number exam_id).include?(head)
+              name_pos.push(i)
+            elsif head =~ /^q_\d+$/
+              question_pos[i] = head
+            elsif %w(% score #_correct blank_count).include?(head)
+              # Ignore
+            else
+              raise "In multiple choice file, unknown header #{head}"
+            end
           end
+          next
         end
 
-        # Read each line of the file
-        io.each do |line|
-          id, answers = process_line(line, name_pos, question_pos)
-          if id.downcase == 'key'
-            @key = answers
-          else
-            @responses[id] = answers
-          end
+        # All other rows
+        id, answers = process_record(row, name_pos, question_pos)
+        if id.downcase == 'key'
+          @key = answers
+        else
+          @responses[id] = answers
         end
       end
     end
 
     attr_reader :key, :responses
 
-    def clean_header(head)
-      return head.downcase.strip.gsub(' ', '_')
+    #
+    # Receives an answer key in a separate file.
+    #
+    def receive_answer_key(filename)
+      qnum, anum = nil, nil
+      @key = {}
+      read_data_file(filename) do |row|
+        if qnum.nil? # Header row
+          qnum, anum = row.index('Question'), row.index('Answer')
+          unless qnum && anum
+            raise "Answer key #{filename} lacks header with Question and Answer"
+          end
+          next
+        end
+
+        # All other rows
+        q, a = "q_#{row[qnum]}", row[anum]
+        raise "Invalid number #{q} in answer key" unless q =~ /\Aq_\d+\z/
+        @key[q] = a
+      end
     end
+
 
     #
     # Reads a line read from the multiple choice file. line is the line text,
@@ -81,12 +118,11 @@ class Rubric
     # array, the first being the ID number and the second being a hash mapping
     # question names to answer choices.
     #
-    def process_line(line, name_pos, question_pos)
-      line_elts = line.chomp.split(/\t/).map(&:strip)
+    def process_record(row, name_pos, question_pos)
       name = nil
       name_pos.each do |np|
-        if line_elts[np] && line_elts[np] != ''
-          name = line_elts[np]
+        if row[np] && row[np] != ''
+          name = row[np]
           break
         end
       end
@@ -94,21 +130,9 @@ class Rubric
 
       answers = {}
       question_pos.each do |pos, qname|
-        answers[qname] = line_elts[pos]
+        answers[qname] = row[pos]
       end
       return [ name, answers ]
-    end
-
-    def receive_answer_key(filename)
-      key = {}
-      open(filename) do |io|
-        io.each do |line|
-          qnum, answer = line.split(/\s+/)
-          qnum = "q_#{qnum}"
-          key[qnum] = answer
-        end
-      end
-      @key = key
     end
 
     element(:points_per_question, Numeric, default: 1,

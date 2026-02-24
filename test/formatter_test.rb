@@ -54,8 +54,13 @@ class FormatterTest < Minitest::Test
     formatter_check(@io.string, expectations, :section, /Section Name/i)
 
     @io.truncate(0); @io.pos = 0
-    @formatter.format_due_date(Date.new(2024, 11, 12), "Final")
-    formatter_check(@io.string, expectations, :due_date, /Final/i)
+    due_date = Syllabus::DueDate.new({
+      date: Date.new(2024, 11, 12),
+      description: "Final",
+      name: "Assignment",
+    }, nil)
+    @formatter.format_due_date(due_date)
+    formatter_check(@io.string, expectations, :due_date, /Assignment.*Final/mi)
 
     @io.truncate(0); @io.pos = 0
     @formatter.format_noclass(
@@ -143,7 +148,9 @@ class FormatterTest < Minitest::Test
   end
 
   def test_slide_formatter
-    formatter_battery(Syllabus::SlidesFormatter, {}, {
+    formatter_battery(Syllabus::SlidesFormatter, {
+      'header' => "Class\n",
+    }, {
       default: :none,
       class_header: :default,
       reading: :default,

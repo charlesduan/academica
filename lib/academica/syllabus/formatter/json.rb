@@ -27,7 +27,7 @@ class Syllabus
     def format_section(section)
     end
 
-    def format_due_date(date, expl)
+    def format_due_date(due_date)
     end
 
     def format_reading(reading, pagetext, start_page, stop_page)
