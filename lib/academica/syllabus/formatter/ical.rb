@@ -82,7 +82,7 @@ class Syllabus
     end
 
     def format_reading(reading, pagetext, start_page, stop_page)
-      res = ''
+      res = String.new('')
       res << "(Optional) " if reading.optional
       res << book_for(reading)
       if start_page

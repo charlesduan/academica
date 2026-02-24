@@ -166,33 +166,24 @@ class Textbook
     end
 
     #
-    # Finds the first TOC entry with the given name. To search for an entry
-    # under another entry, use a greater-than symbol:
+    # Finds a TOC entry that matches the given path. See Entry#match for the
+    # specification of the path. If two entries match the path, then an error is
+    # raised unless exactly one of the entries matches the text in the path
+    # exactly.
     #
-    #   Top > Inner
-    #
-    # searches for an entry containing "Inner" within an entry containing "Top".
-    #
-    def entry_named(text)
-      texts = text.split(/\s*>\s*/)
-      level = -1
+    def entry_named(path)
 
-      #
-      # The texts array is a list of texts to look for. Iterating through the
-      # entries, we see if the entry text matches the first text in the list,
-      # continuing if it does not. Upon a match, see if there are any texts
-      # remaining to match; if not then return the entry. Otherwise, move on to
-      # the next text to match, and require that any subsequent matching entries
-      # be on a level higher than the found entry.
-      #
-      entries.each do |entry|
-        return nil if entry.level <= level
-        next unless entry.text.include?(texts.first)
-        texts.shift
-        return entry if texts.empty?
-        level = entry.level
+      candidates = entries.select { |e| e.match(path) }
+      case candidates.count
+      when 0 then return nil
+      when 1 then return candidates.first
+      else
+        last_text = path.match(/[^>\/]*\z/)[0].strip
+        exacts = candidates.select { |e| e.text == last_text }
+        return exacts[0] if exacts.count == 1
+        raise "Multiple TOC entries match #{path}: " \
+          "#{candidates.map(&:to_s).join(", ")}"
       end
-      return nil
     end
 
     #
@@ -277,6 +268,59 @@ class Textbook
           @text += " " + text.strip unless text == ''
         else
           @text = text.strip
+        end
+      end
+
+      #
+      # Determines whether this entry matches an xpath-like specification of the
+      # form:
+      #
+      # //[text1]/[text2]//[text3]/.../[text_n]
+      #
+      # The idea is that the table of contents hierarchy to this entry must
+      # match the path given in the text, insofar as there must be a sequence of
+      # parents to the present element matching each given text.
+      #
+      # Elements in the specification may be separated with slashes or
+      # greater-than signs. If two slashes or a greater-than sign are present,
+      # then there may be any number of parents in between. If the specification
+      # starts with a single slash, then the first element must be a top-level
+      # element.
+      #
+      def match(path, allow_parents: false)
+        path.match(/\s*([>\/]*)\s*([^>\/]*)\z/) do |m|
+
+          parent_path, sep, match_text = m.pre_match.strip, m[1], m[2].strip
+
+          if @text.include?(match_text)
+
+            # Text matched. See if we have to keep checking
+            if parent_path.empty?
+              # Return false if this was supposed to be a top-level item and it
+              # isn't
+              return false if sep == '/' && @parent
+              # Otherwise, the match succeeded
+              return true
+            elsif !@parent
+              # There is still more to be matched, but no parent to match
+              # against
+              return false
+            elsif sep == '/'
+              # A single slash indicates that the parent must match the path
+              # immediately
+              @parent.match(parent_path, allow_parents: false)
+            else
+              # Any other separator allows a match by the parent or its
+              # ancestors
+              @parent.match(parent_path, allow_parents: true)
+            end
+          elsif allow_parents && @parent
+            # See if the parent satisfies the whole path.
+            @parent.match(path, allow_parents: true)
+          else
+            # Text didn't match, and parents can't satisfy the text.
+            return false
+          end
         end
       end
 

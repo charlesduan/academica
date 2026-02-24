@@ -144,12 +144,13 @@ class Syllabus
     end
 
     def format_reading(reading, pagetext, start_page, stop_page)
+      res = String.new("")
       if reading.tag
-        res = "\\SyllabusHeading{#{escape(reading.tag)}}"
+        res << "\\SyllabusHeading{#{escape(reading.tag)}}"
       elsif reading.optional
-        res = "\\SyllabusHeading{Optional}"
+        res << "\\SyllabusHeading{Optional}"
       else
-        res = "\\Read "
+        res << "\\Read "
       end
       res << book_for(reading)
 

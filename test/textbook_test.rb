@@ -157,11 +157,21 @@ class TextbookTest < Minitest::Test
 
   def test_entry_named_levels
     setup_toc
+    assert_equal @entries[0], @toc.entry_named("First Section")
+    assert_equal @entries[0], @toc.entry_named("/First")
+    assert_equal @entries[0], @toc.entry_named("//First")
     assert_equal @entries[1], @toc.entry_named("First > ection")
+    assert_equal @entries[1], @toc.entry_named("First/ection")
+    assert_equal @entries[1], @toc.entry_named("First//ection")
+    assert_equal @entries[1], @toc.entry_named("//Subsection")
+    assert_nil @toc.entry_named("/Subsection")
     assert_nil @toc.entry_named("First > Second")
     assert_nil @toc.entry_named("Second > ection")
     assert_nil @toc.entry_named("No Section > First")
     assert_nil @toc.entry_named("First > First")
+    assert_raises do
+      @toc.entry_named('Section')
+    end
   end
 
 end
