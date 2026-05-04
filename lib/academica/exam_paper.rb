@@ -10,7 +10,7 @@ class ExamPaper
     @issues = {}
     @score_data = ScoreData.new
   end
-  attr_reader :exam_id, :score_data
+  attr_reader :file, :exam_id, :score_data
 
   def inspect
     return "#<ExamPaper #@exam_id>"
@@ -29,6 +29,7 @@ class ExamPaper
   # Parses from a file.
   #
   def read_file(filename)
+    @file = filename
     open(filename) do |io|
       io.each do |line|
         next unless line.start_with?('%')

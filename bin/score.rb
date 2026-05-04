@@ -183,12 +183,24 @@ class ExamDispatcher < Dispatcher
 
     pct = 100 - 100.0 * ungraded_exams.count / exams.count
     puts("%.1f%% complete" % pct)
-
-    unless ungraded_exams.empty?
-      puts "Next exam: #{ungraded_exams.map(&:exam_id).min}"
-    end
   end
 
+  def cat_next; "1. Marking Papers" end
+  def help_next
+    return "Opens the next exam to be graded"
+  end
+  def cmd_next
+    ungraded_exams = exams.select { |exam| exam.all_issues.count == 0 }
+    next_exam = ungraded_exams.sample
+
+    cmd_progress
+    puts "Next exam: #{next_exam.exam_id}"
+    puts "File:      #{next_exam.file}"
+    print("Ready? ")
+    if STDIN.gets =~ /^y/i
+      exec('vim', next_exam.file)
+    end
+  end
 
 
 
