@@ -7,7 +7,12 @@ module CLICharts
   #
   # Formats a table of data, which is given as a hash of hashes or as a table.
   #
-  def tabulate(data)
+  # colsep: The column separator, by default two spaces.
+  #
+  # rowsep: The row separator. If nil, then no separator is output. If a single
+  #         dash, then a line of dashes is drawn.
+  #
+  def tabulate(data, colsep: "  ", rowsep: nil)
 
     if data.is_a?(Hash)
       cols = {}
@@ -42,10 +47,16 @@ module CLICharts
       col.count { |elt| elt =~ /^-?\d+\.?\d*$/ } > col.count / 2 ? :r : :l
     }
 
+    if rowsep == '-'
+      rowsep = '-' * (sum(widths) + colsep.length * (widths.count - 1))
+    end
+    above = nil
     data.each do |row|
+      puts above if above
+      above = rowsep
       puts row.zip(widths, justs).map { |elt, width, justs|
         justs == :r ? elt.rjust(width) : elt.ljust(width)
-      }.join("  ")
+      }.join(colsep)
     end
   end
 

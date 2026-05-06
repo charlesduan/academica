@@ -92,7 +92,7 @@ class ExamDispatcher < Dispatcher
         # generate spurious warnings for the quality and multiple choice
         # pseudo-questions.
         next unless issues[issue.name]
-        issues[issue.name][:question] = question.name
+        issues[issue.name][:question] = question.name || '(no question)'
         issues[issue.name][:points] = issue.max
       end
     end
@@ -150,20 +150,26 @@ class ExamDispatcher < Dispatcher
   end
 
   def summarize_issues(issues)
-    issues = issues.sort_by { |i, d| -d[:flag_sets].count }
+
+    # Sort issues by question, then issue name
+    issues = issues.sort_by { |i, d| [ d[:question], i ] }
     length = issues.map { |issue, data| issue.length }.max
 
+    res = []
+    last_question = nil
     issues.each do |issue, data|
-      if data[:question]
-        qdata = "   %-20s %2d" % [ data[:question], data[:points] || -1 ]
-      else
-        qdata = ''
+      if data[:question] != last_question
+        last_question = data[:question]
+        res.push([ '', last_question.upcase + ":" ])
       end
-      puts("%-#{length}s %2d/%2d%s" % [
-        issue, data[:flag_sets].count, exams.count, qdata
-      ])
+      res.push([ data[:flag_sets].count.to_s, issue ])
     end
-
+    if length < 34 && STDOUT.tty?
+      res.push([ '', '' ]) if res.count.odd?
+      split = res.count / 2
+      res = res[0, split].zip(res[split..]).map(&:flatten)
+    end
+    CLICharts.tabulate(res)
   end
 
   def cat_progress; "1. Marking Papers" end
