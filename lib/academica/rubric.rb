@@ -9,6 +9,7 @@ require 'academica/rubric/type_translator'
 require 'academica/rubric/multiple_choice'
 require 'academica/rubric/curve_spec'
 require 'academica/rubric/weights'
+require 'academica/exam_paper/flag_set'
 
 
 #
@@ -19,6 +20,14 @@ class Rubric
   set_description <<~EOF
     Specifications for reading issue flags out of exam files.
   EOF
+
+  element :flags, String, optional: true, description: <<~EOF
+    Valid flags available under this rubric, in presentation order.
+  EOF
+
+  def receive_flags(flags)
+    ExamPaper::FlagSet.set_valid_flags(flags)
+  end
 
   element :templates, { String => String }, description: <<~EOF
     Template specifications for the types of issues in the exam.

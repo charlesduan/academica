@@ -19,7 +19,7 @@ class ExamPaper
       }.to_h.freeze
     end
     def self.sort_flags(arr)
-      arr.sort_by { |f| @valid_flags[f] }
+      arr.sort_by { |f| @valid_flags[f] || @valid_flags.count }
     end
 
     # Default valid flags and their order

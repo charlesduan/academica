@@ -32,10 +32,12 @@ class ExamPaper
     open(filename) do |io|
       io.each do |line|
         next unless line.start_with?('%')
-        if (m = line.match(/^%+\s+(\S+):\s+(\w+)(?:, .*)?$/))
+        if line =~ /^%+\s*note:/
+          # Ignore notes
+        elsif (m = line.match(/^%+\s*(\S+):\s+(\w+)(?:, .*)?$/))
           add(m[1], m[2])
         else
-          raise "Invalid line #{line} in #{filename}" if line.include?(":")
+          raise "Invalid line #{line} in #{filename}"
         end
       end
     end
