@@ -115,15 +115,17 @@ class Rubric
         flag_set, type, exam_paper.subflags(name), note
       )
 
-      # Collect quality information
-      rubric.quality.values.each { |qt| qt.update(conv_flags) }
-
       # Score the issue
       score = template.score(conv_flags.to_s, note)
 
       # Apply the group cap if any.
       if @issue_group
         score = @issue_group.apply_cap(self, score, score_data, note)
+      end
+
+      # Collect quality information, but only if this issue merited points
+      if score > 0
+        rubric.quality.values.each { |qt| qt.update(conv_flags) }
       end
 
       return score_data.add_score(:issue, name, score, note.strip)
