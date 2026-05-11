@@ -35,6 +35,7 @@ class ExamPaper
         next unless line.start_with?('%')
         if line =~ /^%+\s*note:/
           # Ignore notes
+          next
         elsif (m = line.match(/^%+\s*(\S+):\s+(\w+)(?:, .*)?$/))
           add(m[1], m[2])
         else

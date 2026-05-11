@@ -44,12 +44,26 @@ class ExamDispatcher < Dispatcher
     )
   end
 
+  def edit_file(file)
+    file = file.file if file.is_a?(ExamPaper)
+    exec("vim", file)
+  end
+
   def exams
     return @exams if defined? @exams
     @exams = []
     rubric.each_exam_paper do |file, exam_id|
       exam_paper = ExamPaper.new(exam_id)
-      exam_paper.read_file(file)
+
+      begin
+        exam_paper.read_file(file)
+      rescue
+        warn("Error reading exam #{exam_id}: #$!")
+        STDERR.puts("Edit file? ")
+        edit_file(file) if STDIN.gets =~ /^y/i
+        exit(1)
+      end
+
       @exams.push(exam_paper)
     end
     return @exams
@@ -191,17 +205,42 @@ class ExamDispatcher < Dispatcher
   end
   def cmd_next
     ungraded_exams = exams.select { |exam| exam.all_issues.count == 0 }
-    next_exam = ungraded_exams.sample
+    next_exam = ungraded_exams.min { |a, b| a.exam_id <=> b.exam_id }
 
     cmd_progress
     puts "Next exam: #{next_exam.exam_id}"
     puts "File:      #{next_exam.file}"
     print("Ready? ")
     if STDIN.gets =~ /^y/i
-      exec('vim', next_exam.file)
+      edit_file(next_exam)
     end
   end
 
+
+  def cat_last; "1. Marking Papers" end
+  def help_last
+    return "Opens a recently graded exam"
+  end
+  def cmd_last
+    graded_exams = exams.select { |exam|
+      exam.all_issues.count > 0
+    }.sort_by { |exam|
+      File.mtime(exam.file)
+    }.reverse[0, 10]
+
+    puts "Most recently graded exams:"
+    graded_exams.each_with_index do |exam, i|
+      puts("  % 2d. %s" % [ i + 1, exam.exam_id ])
+    end
+
+    print "Open which exam? "
+    val = STDIN.gets
+    if val =~ /^\d/
+      exam = exams[val.to_i - 1]
+      return unless exam
+      edit_file(exam)
+    end
+  end
 
 
 

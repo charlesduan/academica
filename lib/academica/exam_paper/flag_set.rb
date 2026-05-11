@@ -23,7 +23,7 @@ class ExamPaper
     end
 
     # Default valid flags and their order
-    set_valid_flags("saAXiIrReEfFbtpPwWhHd")
+    set_valid_flags("saAXiIrReEfFbBtpPwWhHd")
 
     def initialize(id, issue)
       @exam_id = id
