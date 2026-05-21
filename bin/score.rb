@@ -236,7 +236,7 @@ class ExamDispatcher < Dispatcher
     print "Open which exam? "
     val = STDIN.gets
     if val =~ /^\d/
-      exam = exams[val.to_i - 1]
+      exam = graded_exams[val.to_i - 1]
       return unless exam
       edit_file(exam)
     end
