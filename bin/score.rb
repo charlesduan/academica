@@ -205,6 +205,11 @@ class ExamDispatcher < Dispatcher
   end
   def cmd_next
     ungraded_exams = exams.select { |exam| exam.all_issues.count == 0 }
+    if ungraded_exams.empty?
+      puts("All done!")
+      return
+    end
+
     next_exam = ungraded_exams.min { |a, b| a.exam_id <=> b.exam_id }
 
     cmd_progress
