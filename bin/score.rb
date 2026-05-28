@@ -207,6 +207,11 @@ class ExamDispatcher < Dispatcher
   end
   def cmd_next
     ungraded_exams = exams.select { |exam| exam.all_issues.count == 0 }
+    if ungraded_exams.empty?
+      puts("All done!")
+      return
+    end
+
     next_exam = ungraded_exams.min { |a, b| a.exam_id <=> b.exam_id }
 
     cmd_progress
@@ -238,7 +243,7 @@ class ExamDispatcher < Dispatcher
     print "Open which exam? "
     val = STDIN.gets
     if val =~ /^\d/
-      exam = exams[val.to_i - 1]
+      exam = graded_exams[val.to_i - 1]
       return unless exam
       edit_file(exam)
     end
