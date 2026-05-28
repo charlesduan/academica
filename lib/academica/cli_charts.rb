@@ -5,6 +5,95 @@ module CLICharts
   extend CLICharts
 
   #
+  # Converts a hash of hashes table into an array format. The input should be
+  # given 
+  #
+  def hash_to_table(data)
+
+    # This will map column names to their position in the resulting table.
+    # Column 0 will contain the keys to data. Column 1 will contain the first
+    # key found in a subhash, column 2 the second key found, and so on. The row
+    # key column is identified by nil below.
+    cols = { nil => 0 }
+
+    # Collect all the possible columns
+    data.each do |row_name, row_data|
+      row_data.each do |col, v|
+        # If a column name is thus far unknown, then its position is equal to
+        # the current number of items in cols.
+        cols[col.to_s] ||= cols.count
+      end
+    end
+
+    # The output starts off with a header row
+    res = [ cols.keys.map(&:to_s) ]
+
+    # For each row in the input
+    data.each do |row_name, row_data|
+      # Make a blank output row
+      arr = [ row_name.to_s, *([ '' ] * (cols.count - 1)) ]
+
+      # Update the blank row based on the hash of row data
+      row_data.each do |col, v|
+        v = yield(col, v) if block_given?
+        arr[cols[col.to_s]] = tabulate_cell_format(v)
+      end
+      # Add the output row
+      res.push(arr)
+    end
+    return res
+  end
+
+  #
+  # Converts data, which should be an array of arrays, such that all the
+  # sub-arrays have equal length and that all values are strings.
+  #
+  def normalize_table(data)
+    max_size = data.map(&:length).max
+    return data.map { |row|
+      row.map { |v|
+        v = yield(v) if block_given?
+        tabulate_cell_format(v)
+      } + ([ '' ] * (max_size - row.length))
+    }
+  end
+
+  #
+  # Given a number of tables (arrays of arrays), connect them horizontally.
+  #
+  def adjoin_tables(*tables)
+    len = tables.map(&:count).max
+    nt = tables.map { |table|
+      # Add blank columns and then normalize
+      normalize_table(table + [ [] ] * (len - table.count))
+    }
+    nt.transpose.map { |rows| rows.flatten }
+  end
+
+  #
+  # Given a table, split the table into parts and adjoin the parts, up to a
+  # given width.
+  #
+  def split_table(table, width, colsep_width: 2)
+    res = table
+    try_cols = 2
+    loop do
+      rows = table.count / try_cols
+      rows += 1 if table.count % try_cols > 0
+      t = adjoin_tables(
+        *(0...try_cols).map { |group| table[group * rows, rows] }
+      )
+      cols = t.transpose
+      max_width = cols.sum { |col|
+        col.map(&:length).max
+      } + colsep_width * (cols.count - 1)
+      return res if max_width > width
+      res = t
+      try_cols += 1
+    end
+  end
+
+  #
   # Formats a table of data, which is given as a hash of hashes or as a table.
   #
   # colsep: The column separator, by default two spaces.
@@ -12,32 +101,15 @@ module CLICharts
   # rowsep: The row separator. If nil, then no separator is output. If a single
   #         dash, then a line of dashes is drawn.
   #
-  def tabulate(data, colsep: "  ", rowsep: nil)
+  def tabulate(data, colsep: "  ", rowsep: nil, &block)
 
     if data.is_a?(Hash)
-      cols = {}
-
-      # Collect all the possible keys
-      data.each do |key, hash|
-        hash.each do |k, v|
-          cols[k] ||= cols.count
-        end
-      end
-
-      # Populate a table
-      data = data.map do |key, hash|
-        arr = [ key.to_s, *([ '' ] * cols.count) ]
-        hash.each do |k, v|
-          arr[cols[k] + 1] = block_given? ? \
-            yield(k, v) : tabulate_cell_format(v)
-        end
-        arr
-      end
-
-      # Add the header row
-      data.unshift([ '', *cols.keys.map(&:to_s) ])
+      data = hash_to_table(data, &block)
+    else
+      data = normalize_table(data, &block)
     end
 
+    # tdata is an array of columns
     tdata = data.transpose
 
     # Determine the table cell widths
@@ -136,5 +208,24 @@ module CLICharts
     end
     tabulate(table)
   end
+
+  #
+  # Draws a stacked bar chart. The data should be a hash mapping data element
+  # names either to a single integer or to an array of integers for the stacked
+  # bars.
+  #
+  # width is the maximum width of the chart. chars is the set of characters to
+  # be used for the bars; they will be recycled if necessary.
+  def bar_chart(data, width: 80, chars: 'X*.', colsep: ' ')
+    key_width = data.keys.map(&:to_s).max
+    width -= key_width + colsep.length
+
+    max_bar = data.values.sum { |v|
+      v.is_a?(Array)? v.sum : v
+    }
+
+    ratio = [ 1, width.to_f / max_bar ].min
+  end
+
 
 end

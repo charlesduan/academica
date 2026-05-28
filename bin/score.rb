@@ -2,6 +2,7 @@
 
 require 'structured'
 require 'cli-dispatcher'
+require 'tty-screen'
 
 require 'academica/rubric'
 require 'academica/exam_paper'
@@ -147,20 +148,25 @@ class ExamDispatcher < Dispatcher
     end
 
     puts "#{issue}: #{flag_sets.count}/#{exams.count} exams#{qinfo}"
-    puts "  #{types.sort.map { |t, c| "#{t} #{c}" }.join(", ")}"
+    puts "  Forms: #{types.sort.map { |t, c| "#{t} #{c}" }.join(", ")}"
 
-    specials = %w(s b t h H w W p P d).map { |f|
-      "#{f} #{flag_sets.count { |fs| fs.include?(f) }}"
+    specials = %w(s t h H w W p P d).map { |f|
+      c = flag_sets.count { |fs| fs.include?(f) }
+      c > 0 ? "#{f} #{c}" : nil
     }
-    puts "  #{specials.join(", ")}"
+    puts "  Specials: #{specials.compact.join(", ")}"
 
-    flag_sets.map { |fs|
-      fs.to_s.gsub(/[btdpPhHwWs]/, '')
-    }.group_by { |s| s.length }.sort.reverse.each do |count, strings|
-      puts ("%3d" % count) + ": " + \
-        strings.group_by(&:itself).keys.sort.join(", ")
+    flags = {}
+    flag_sets.each do |fs|
+      fs.each do |flag|
+        uc_flag = flag.upcase
+        flags[uc_flag] ||= {}
+        fcase = (flag == uc_flag) ? :uc : :lc
+        flags[uc_flag][fcase] ||= 0
+        flags[uc_flag][fcase] += 1
+      end
     end
-
+    CLICharts.tabulate(flags)
   end
 
   def summarize_issues(issues)
@@ -178,11 +184,7 @@ class ExamDispatcher < Dispatcher
       end
       res.push([ data[:flag_sets].count.to_s, issue ])
     end
-    if length < 34 && STDOUT.tty?
-      res.push([ '', '' ]) if res.count.odd?
-      split = res.count / 2
-      res = res[0, split].zip(res[split..]).map(&:flatten)
-    end
+    res = CLICharts.split_table(res, TTY::Screen.cols) if STDOUT.tty?
     CLICharts.tabulate(res)
   end
 
