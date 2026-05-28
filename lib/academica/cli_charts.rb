@@ -217,14 +217,19 @@ module CLICharts
   # width is the maximum width of the chart. chars is the set of characters to
   # be used for the bars; they will be recycled if necessary.
   def bar_chart(data, width: 80, chars: 'X*.', colsep: ' ')
-    key_width = data.keys.map(&:to_s).max
-    width -= key_width + colsep.length
-
-    max_bar = data.values.sum { |v|
-      v.is_a?(Array)? v.sum : v
-    }
-
+    key_width = data.keys.map { |k| k.to_s.length }.max
+    width -= key_width + colsep.length + 1
+    data = data.transform_values { |v| v.is_a?(Array) ? v : [ v ] }
+    max_bar = data.values.map(&:sum).max
     ratio = [ 1, width.to_f / max_bar ].min
+    tabulate(data.transform_values { |v|
+      syms = chars.split('')
+      v.map { |num|
+        str = syms[0] * (num * ratio).round
+        syms = syms.rotate
+        str
+      }.join('')
+    }.to_a)
   end
 
 

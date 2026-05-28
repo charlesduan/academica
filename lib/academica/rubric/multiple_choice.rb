@@ -235,13 +235,19 @@ class Rubric
         # 27% the number of exams.
         count_27pct = (data.count * 0.27).round
 
-        [ qnum, {
-          frac_correct: data.map(&:last).mean.round(3),
-          point_biserial: ((
+        if grouped_scores[0] && grouped_scores[1]
+          point_biserial = ((
             grouped_scores[1].mean - grouped_scores[0].mean
           ) / scores.values.standard_deviation * Math.sqrt(
             grouped_scores[1].count * grouped_scores[0].count
-          ) / scores.count).round(3),
+          ) / scores.count).round(3)
+        else
+          point_biserial = nil
+        end
+
+        [ qnum, {
+          frac_correct: data.map(&:last).mean.round(3),
+          point_biserial: point_biserial,
           discrimination_index: (
             data.last(count_27pct).map(&:last).mean -
             data.first(count_27pct).map(&:last).mean

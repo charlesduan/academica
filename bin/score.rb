@@ -160,13 +160,12 @@ class ExamDispatcher < Dispatcher
     flag_sets.each do |fs|
       fs.each do |flag|
         uc_flag = flag.upcase
-        flags[uc_flag] ||= {}
-        fcase = (flag == uc_flag) ? :uc : :lc
-        flags[uc_flag][fcase] ||= 0
+        flags[uc_flag] ||= [ 0, 0 ]
+        fcase = (flag == uc_flag) ? 0 : 1
         flags[uc_flag][fcase] += 1
       end
     end
-    CLICharts.tabulate(flags)
+    CLICharts.bar_chart(flags)
   end
 
   def summarize_issues(issues)
