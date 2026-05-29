@@ -161,7 +161,7 @@ class ExamAnalyzer
   end
 
   def opt_curve
-    return nil unless @curve_spec && curve_spec.actual
+    return nil unless curve_spec && curve_spec.actual
     return curve
   end
 
